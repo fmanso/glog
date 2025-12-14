@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"errors"
+	"strings"
 
 	"github.com/boltdb/bolt"
 	_ "github.com/boltdb/bolt"
@@ -16,6 +17,7 @@ type DocumentStore struct {
 	bucketDocs       []byte
 	bucketParagraphs []byte
 	bucketTimeIndex  []byte
+	bucketTermsIndex []byte
 }
 
 func NewDocumentStore(path string) (*DocumentStore, error) {
@@ -35,6 +37,11 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 			return err
 		}
 
+		_, err = tx.CreateBucketIfNotExists([]byte("terms_index"))
+		if err != nil {
+			return err
+		}
+
 		_, err = tx.CreateBucketIfNotExists([]byte("paragraphs"))
 		return err
 	})
@@ -49,6 +56,7 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 		bucketDocs:       []byte("documents"),
 		bucketParagraphs: []byte("paragraphs"),
 		bucketTimeIndex:  []byte("time_index"),
+		bucketTermsIndex: []byte("terms_index"),
 	}, nil
 }
 
@@ -102,11 +110,78 @@ func (store *DocumentStore) Save(doc *Document, paragraphs []Paragraph) error {
 			return err
 		}
 
+		// Add terms index
+		err = store.indexTerms(tx, doc, paragraphs)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (store *DocumentStore) indexTerms(tx *bolt.Tx, doc *Document, paragraphs []Paragraph) error {
+	bucket := tx.Bucket(store.bucketTermsIndex)
+	for _, para := range paragraphs {
+		words := strings.Fields(string(para.Content))
+		for _, word := range words {
+			term := strings.ToLower(word)
+			indices := bucket.Get([]byte(term))
+			if indices == nil {
+				docIds := []DocumentID{doc.ID}
+				// Serialize the slice
+				var buf bytes.Buffer
+				enc := gob.NewEncoder(&buf)
+				err := enc.Encode(docIds)
+				if err != nil {
+					return err
+				}
+				// Store the serialized slice
+				err = bucket.Put([]byte(term), buf.Bytes())
+				if err != nil {
+					return err
+				}
+			} else {
+				// Deserialize the existing slice
+				var docIds []DocumentID
+				buf := bytes.NewBuffer(indices)
+				dec := gob.NewDecoder(buf)
+				err := dec.Decode(&docIds)
+				if err != nil {
+					return err
+				}
+				// Check if doc.ID is already in docIds
+				found := false
+				for _, id := range docIds {
+					if id == doc.ID {
+						found = true
+						break
+					}
+				}
+				if !found {
+					// Append the new DocumentID
+					docIds = append(docIds, doc.ID)
+					// Serialize the updated slice
+					var outBuf bytes.Buffer
+					enc := gob.NewEncoder(&outBuf)
+					err = enc.Encode(docIds)
+					if err != nil {
+						return err
+					}
+					// Store the serialized slice
+					err = bucket.Put([]byte(term), outBuf.Bytes())
+					if err != nil {
+						return err
+					}
+				}
+			}
+		}
 	}
 
 	return nil
@@ -231,8 +306,36 @@ func (store *DocumentStore) Load(from, to DateTime) ([]DocumentID, error) {
 	return docs, nil
 }
 
-func (store *DocumentStore) Search(terms []string) ([]Document, error) {
-	return nil, nil
+func (store *DocumentStore) Search(terms []string) ([]DocumentID, error) {
+	docs := make([]DocumentID, 0)
+	err := store.bolt.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(store.bucketTermsIndex)
+		for _, term := range terms {
+			term = strings.ToLower(term)
+			data := bucket.Get([]byte(term))
+			if data == nil {
+				continue
+			}
+
+			// Deserialize the slice of DocumentIDs
+			var docIds []DocumentID
+			buf := bytes.NewBuffer(data)
+			dec := gob.NewDecoder(buf)
+			err := dec.Decode(&docIds)
+			if err != nil {
+				return err
+			}
+			docs = append(docs, docIds...)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return docs, nil
 }
 
 func (store *DocumentStore) GetReferences(documentID uuid.UUID) ([]Document, error) {

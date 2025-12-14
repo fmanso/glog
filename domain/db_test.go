@@ -104,3 +104,43 @@ func TestLoad(t *testing.T) {
 		t.Fatalf("Expected no documents in date range, got %d", len(docs))
 	}
 }
+
+func TestSearch(t *testing.T) {
+	store, err := NewDocumentStore("./testdb.db")
+	if err != nil {
+		t.Fatalf("Failed to create DocumentStore: %v", err)
+	}
+	defer store.Close()
+
+	pid := ParagraphID(uuid.New())
+	var paragraphs []Paragraph
+	paragraphs = append(paragraphs, Paragraph{
+		ID:         pid,
+		DocumentID: DocumentID(uuid.New()),
+		Content:    "This is a test paragraph.",
+	})
+
+	doc := NewDocument("Test Document", time.Now(), paragraphs)
+
+	err = store.Save(doc, paragraphs)
+	if err != nil {
+		t.Fatalf("Failed to save document: %v", err)
+	}
+	results, err := store.Search([]string{"test"})
+	if err != nil {
+		t.Fatalf("Failed to search documents: %v", err)
+	}
+
+	if len(results) == 0 {
+		t.Fatalf("Expected at least one search result, got %d", len(results))
+	}
+
+	results, err = store.Search([]string{"missingterm"})
+	if err != nil {
+		t.Fatalf("Failed to search documents: %v", err)
+	}
+
+	if len(results) != 0 {
+		t.Fatalf("Expected no search results, got %d", len(results))
+	}
+}
