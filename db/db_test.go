@@ -1,7 +1,9 @@
-package domain
+package db
 
 import (
 	"encoding/gob"
+	"glog/domain"
+	"os"
 	"testing"
 	"time"
 
@@ -9,34 +11,36 @@ import (
 )
 
 func init() {
-	gob.Register(Document{})
-	gob.Register(Paragraph{})
+	gob.Register(domain.Document{})
+	gob.Register(domain.Paragraph{})
 }
 
 func TestNewDocumentStore(t *testing.T) {
-	db, err := NewDocumentStore("./testdb.db")
+	db, err := NewDocumentStore("./testnew.db")
 	if err != nil {
 		t.Fatalf("Failed to create DocumentStore: %v", err)
 	}
+	defer os.Remove("./testnew.db")
 	defer db.Close()
 }
 
 func TestSave(t *testing.T) {
-	store, err := NewDocumentStore("./testdb.db")
+	store, err := NewDocumentStore("./testsave.db")
 	if err != nil {
 		t.Fatalf("Failed to create DocumentStore: %v", err)
 	}
+	defer os.Remove("./testsave.db")
 	defer store.Close()
 
-	pid := ParagraphID(uuid.New())
-	var paragraphs []Paragraph
-	paragraphs = append(paragraphs, Paragraph{
+	pid := domain.ParagraphID(uuid.New())
+	var paragraphs []domain.Paragraph
+	paragraphs = append(paragraphs, domain.Paragraph{
 		ID:         pid,
-		DocumentID: DocumentID(uuid.New()),
+		DocumentID: domain.DocumentID(uuid.New()),
 		Content:    "This is a test paragraph.",
 	})
 
-	doc := NewDocument("Test Document", time.Now(), paragraphs)
+	doc := domain.NewDocument("Test Document", time.Now(), paragraphs)
 
 	err = store.Save(doc, paragraphs)
 	if err != nil {
@@ -45,21 +49,22 @@ func TestSave(t *testing.T) {
 }
 
 func TestLoad(t *testing.T) {
-	store, err := NewDocumentStore("./testdb.db")
+	store, err := NewDocumentStore("./testloaddb.db")
 	if err != nil {
 		t.Fatalf("Failed to create DocumentStore: %v", err)
 	}
+	defer os.Remove("./testloaddb.db")
 	defer store.Close()
 
-	pid := ParagraphID(uuid.New())
-	var paragraphs []Paragraph
-	paragraphs = append(paragraphs, Paragraph{
+	pid := domain.ParagraphID(uuid.New())
+	var paragraphs []domain.Paragraph
+	paragraphs = append(paragraphs, domain.Paragraph{
 		ID:         pid,
-		DocumentID: DocumentID(uuid.New()),
+		DocumentID: domain.DocumentID(uuid.New()),
 		Content:    "This is a test paragraph.",
 	})
 
-	doc := NewDocument("Test Document", time.Now(), paragraphs)
+	doc := domain.NewDocument("Test Document", time.Now(), paragraphs)
 
 	err = store.Save(doc, paragraphs)
 	if err != nil {
@@ -85,7 +90,7 @@ func TestLoad(t *testing.T) {
 
 	from := time.Now().Add(-1 * time.Hour)
 	to := time.Now().Add(1 * time.Hour)
-	docs, err := store.Load(ToDateTime(from), ToDateTime(to))
+	docs, err := store.Load(domain.ToDateTime(from), domain.ToDateTime(to))
 	if err != nil {
 		t.Fatalf("Failed to load documents by date range: %v", err)
 	}
@@ -95,7 +100,7 @@ func TestLoad(t *testing.T) {
 	}
 
 	to = time.Now().Add(-20 * time.Minute)
-	docs, err = store.Load(ToDateTime(from), ToDateTime(to))
+	docs, err = store.Load(domain.ToDateTime(from), domain.ToDateTime(to))
 	if err != nil {
 		t.Fatalf("Failed to load documents by date range: %v", err)
 	}
@@ -106,21 +111,22 @@ func TestLoad(t *testing.T) {
 }
 
 func TestSearch(t *testing.T) {
-	store, err := NewDocumentStore("./testdb.db")
+	store, err := NewDocumentStore("./testsearch.db")
 	if err != nil {
 		t.Fatalf("Failed to create DocumentStore: %v", err)
 	}
+	defer os.Remove("./testsearch.db")
 	defer store.Close()
 
-	pid := ParagraphID(uuid.New())
-	var paragraphs []Paragraph
-	paragraphs = append(paragraphs, Paragraph{
+	pid := domain.ParagraphID(uuid.New())
+	var paragraphs []domain.Paragraph
+	paragraphs = append(paragraphs, domain.Paragraph{
 		ID:         pid,
-		DocumentID: DocumentID(uuid.New()),
+		DocumentID: domain.DocumentID(uuid.New()),
 		Content:    "This is a test paragraph.",
 	})
 
-	doc := NewDocument("Test Document", time.Now(), paragraphs)
+	doc := domain.NewDocument("Test Document", time.Now(), paragraphs)
 
 	err = store.Save(doc, paragraphs)
 	if err != nil {

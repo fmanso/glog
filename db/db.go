@@ -1,9 +1,10 @@
-package domain
+package db
 
 import (
 	"bytes"
 	"encoding/gob"
 	"errors"
+	"glog/domain"
 	"strings"
 
 	"github.com/boltdb/bolt"
@@ -64,8 +65,8 @@ func (store *DocumentStore) Close() error {
 	return store.bolt.Close()
 }
 
-func (store *DocumentStore) Save(doc *Document, paragraphs []Paragraph) error {
-	paras := make(map[ParagraphID]Paragraph)
+func (store *DocumentStore) Save(doc *domain.Document, paragraphs []domain.Paragraph) error {
+	paras := make(map[domain.ParagraphID]domain.Paragraph)
 	for _, para := range paragraphs {
 		paras[para.ID] = para
 	}
@@ -126,7 +127,7 @@ func (store *DocumentStore) Save(doc *Document, paragraphs []Paragraph) error {
 	return nil
 }
 
-func (store *DocumentStore) indexTerms(tx *bolt.Tx, doc *Document, paragraphs []Paragraph) error {
+func (store *DocumentStore) indexTerms(tx *bolt.Tx, doc *domain.Document, paragraphs []domain.Paragraph) error {
 	bucket := tx.Bucket(store.bucketTermsIndex)
 	for _, para := range paragraphs {
 		words := strings.Fields(string(para.Content))
@@ -134,7 +135,7 @@ func (store *DocumentStore) indexTerms(tx *bolt.Tx, doc *Document, paragraphs []
 			term := strings.ToLower(word)
 			indices := bucket.Get([]byte(term))
 			if indices == nil {
-				docIds := []DocumentID{doc.ID}
+				docIds := []domain.DocumentID{doc.ID}
 				// Serialize the slice
 				var buf bytes.Buffer
 				enc := gob.NewEncoder(&buf)
@@ -149,7 +150,7 @@ func (store *DocumentStore) indexTerms(tx *bolt.Tx, doc *Document, paragraphs []
 				}
 			} else {
 				// Deserialize the existing slice
-				var docIds []DocumentID
+				var docIds []domain.DocumentID
 				buf := bytes.NewBuffer(indices)
 				dec := gob.NewDecoder(buf)
 				err := dec.Decode(&docIds)
@@ -187,12 +188,12 @@ func (store *DocumentStore) indexTerms(tx *bolt.Tx, doc *Document, paragraphs []
 	return nil
 }
 
-func (store *DocumentStore) updateOrCreateSliceForTime(tx *bolt.Tx, dateTime DateTime, docID DocumentID) error {
+func (store *DocumentStore) updateOrCreateSliceForTime(tx *bolt.Tx, dateTime domain.DateTime, docID domain.DocumentID) error {
 	// Get or create a slice of DocumentIDs for the given time
 	bucket := tx.Bucket(store.bucketTimeIndex)
 	documents := bucket.Get([]byte(dateTime))
 	if documents == nil {
-		docIds := []DocumentID{docID}
+		docIds := []domain.DocumentID{docID}
 		// Serialize the slice
 		var buf bytes.Buffer
 		enc := gob.NewEncoder(&buf)
@@ -207,7 +208,7 @@ func (store *DocumentStore) updateOrCreateSliceForTime(tx *bolt.Tx, dateTime Dat
 		}
 	} else {
 		// Deserialize the existing slice
-		var docIds []DocumentID
+		var docIds []domain.DocumentID
 		buf := bytes.NewBuffer(documents)
 		dec := gob.NewDecoder(buf)
 		err := dec.Decode(&docIds)
@@ -236,9 +237,9 @@ func (store *DocumentStore) updateOrCreateSliceForTime(tx *bolt.Tx, dateTime Dat
 var ErrDocumentNotFound = errors.New("document not found")
 var ErrParagraphNotFound = errors.New("paragraph not found")
 
-func (store *DocumentStore) LoadDocument(id DocumentID) (*Document, map[ParagraphID]Paragraph, error) {
-	var doc Document
-	paras := make(map[ParagraphID]Paragraph)
+func (store *DocumentStore) LoadDocument(id domain.DocumentID) (*domain.Document, map[domain.ParagraphID]domain.Paragraph, error) {
+	var doc domain.Document
+	paras := make(map[domain.ParagraphID]domain.Paragraph)
 	err := store.bolt.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(store.bucketDocs)
 		data := bucket.Get([]byte(id.String()))
@@ -258,7 +259,7 @@ func (store *DocumentStore) LoadDocument(id DocumentID) (*Document, map[Paragrap
 				return ErrParagraphNotFound
 			}
 
-			var para Paragraph
+			var para domain.Paragraph
 			err := para.Deserialize(data)
 			if err != nil {
 				return err
@@ -276,8 +277,8 @@ func (store *DocumentStore) LoadDocument(id DocumentID) (*Document, map[Paragrap
 	return &doc, paras, nil
 }
 
-func (store *DocumentStore) Load(from, to DateTime) ([]DocumentID, error) {
-	docs := make([]DocumentID, 0)
+func (store *DocumentStore) Load(from, to domain.DateTime) ([]domain.DocumentID, error) {
+	docs := make([]domain.DocumentID, 0)
 	err := store.bolt.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(store.bucketTimeIndex)
 		fromBytes := []byte(from)
@@ -286,7 +287,7 @@ func (store *DocumentStore) Load(from, to DateTime) ([]DocumentID, error) {
 		c := bucket.Cursor()
 		for k, v := c.Seek(fromBytes); k != nil && bytes.Compare(k, toBytes) <= 0; k, v = c.Next() {
 			// Deserialize the slice of DocumentIDs
-			var docIds []DocumentID
+			var docIds []domain.DocumentID
 			buf := bytes.NewBuffer(v)
 			dec := gob.NewDecoder(buf)
 			err := dec.Decode(&docIds)
@@ -306,8 +307,8 @@ func (store *DocumentStore) Load(from, to DateTime) ([]DocumentID, error) {
 	return docs, nil
 }
 
-func (store *DocumentStore) Search(terms []string) ([]DocumentID, error) {
-	docs := make([]DocumentID, 0)
+func (store *DocumentStore) Search(terms []string) ([]domain.DocumentID, error) {
+	docs := make([]domain.DocumentID, 0)
 	err := store.bolt.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(store.bucketTermsIndex)
 		for _, term := range terms {
@@ -318,7 +319,7 @@ func (store *DocumentStore) Search(terms []string) ([]DocumentID, error) {
 			}
 
 			// Deserialize the slice of DocumentIDs
-			var docIds []DocumentID
+			var docIds []domain.DocumentID
 			buf := bytes.NewBuffer(data)
 			dec := gob.NewDecoder(buf)
 			err := dec.Decode(&docIds)
@@ -338,6 +339,6 @@ func (store *DocumentStore) Search(terms []string) ([]DocumentID, error) {
 	return docs, nil
 }
 
-func (store *DocumentStore) GetReferences(documentID uuid.UUID) ([]Document, error) {
+func (store *DocumentStore) GetReferences(documentID uuid.UUID) ([]domain.Document, error) {
 	return nil, nil
 }
