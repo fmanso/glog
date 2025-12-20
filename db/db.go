@@ -5,7 +5,7 @@ import (
 	"encoding/gob"
 	"errors"
 	"glog/domain"
-	"strings"
+	"time"
 
 	"github.com/boltdb/bolt"
 	_ "github.com/boltdb/bolt"
@@ -65,54 +65,215 @@ func (store *DocumentStore) Close() error {
 	return store.bolt.Close()
 }
 
-func (store *DocumentStore) Save(doc *domain.Document, paragraphs []domain.Paragraph) error {
-	paras := make(map[domain.ParagraphID]domain.Paragraph)
-	for _, para := range paragraphs {
-		paras[para.ID] = para
+type DocDb struct {
+	ID    uuid.UUID
+	Title string
+	Date  string
+	Body  []uuid.UUID
+}
+
+type ParagraphDb struct {
+	ID         uuid.UUID
+	DocumentID uuid.UUID
+	Content    string
+	ParentID   *uuid.UUID
+}
+
+func (store *DocumentStore) saveDoc(tx *bolt.Tx, doc *domain.Document) error {
+	// Create DocDb from domain.Document
+	docDb := DocDb{
+		ID:    uuid.UUID(doc.ID),
+		Title: doc.Title,
+		Date:  string(doc.Date),
+		Body:  make([]uuid.UUID, 0),
 	}
 
-	err := store.bolt.Update(func(tx *bolt.Tx) error {
-		// Add the document
-		bucket := tx.Bucket(store.bucketDocs)
-		data, err := doc.Serialize()
-		if err != nil {
-			return err
+	// Add paragraph IDs to docDb.Body. IDs from all paragraphs at any level are included.
+	var addParagraphIDs func(paragraphs []*domain.Paragraph)
+	addParagraphIDs = func(paragraphs []*domain.Paragraph) {
+		for _, para := range paragraphs {
+			docDb.Body = append(docDb.Body, uuid.UUID(para.ID))
+			if len(para.Children) > 0 {
+				addParagraphIDs(para.Children)
+			}
 		}
+	}
+	addParagraphIDs(doc.Body)
 
-		key := []byte(doc.ID.String())
-		err = bucket.Put(key, data)
-		if err != nil {
-			return err
-		}
+	// Serialize DocDb
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(docDb)
+	if err != nil {
+		return err
+	}
 
-		// Add the paragraphs
-		bucket = tx.Bucket(store.bucketParagraphs)
-		for _, paraID := range doc.Body {
-			para, ok := paras[paraID]
-			if !ok {
-				return errors.New("paragraph not found in provided map")
+	bucket := tx.Bucket(store.bucketDocs)
+	return bucket.Put([]byte(doc.ID.String()), buf.Bytes())
+}
+
+func (store *DocumentStore) saveParagraphs(tx *bolt.Tx, doc *domain.Document) error {
+	bucket := tx.Bucket(store.bucketParagraphs)
+
+	// Create and save ParagraphDb for each paragraph
+	var saveParagraphs func(paragraphs []*domain.Paragraph, parentID *uuid.UUID) error
+	saveParagraphs = func(paragraphs []*domain.Paragraph, parentID *uuid.UUID) error {
+		for _, para := range paragraphs {
+			paraDb := ParagraphDb{
+				ID:         uuid.UUID(para.ID),
+				DocumentID: uuid.UUID(doc.ID),
+				Content:    string(para.Content),
+				ParentID:   parentID,
 			}
 
-			data, err := para.Serialize()
+			// Serialize ParagraphDb
+			var paraBuf bytes.Buffer
+			paraEnc := gob.NewEncoder(&paraBuf)
+			err := paraEnc.Encode(paraDb)
 			if err != nil {
 				return err
 			}
 
-			key := []byte(para.ID.String())
-			err = bucket.Put(key, data)
+			// Save to BoltDB
+			err = bucket.Put([]byte(paraDb.ID.String()), paraBuf.Bytes())
 			if err != nil {
 				return err
 			}
+
+			// Recursively save child paragraphs
+			if len(para.Children) > 0 {
+				err = saveParagraphs(para.Children, &paraDb.ID)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+
+	return saveParagraphs(doc.Body, nil)
+}
+
+func (store *DocumentStore) Save(doc *domain.Document) error {
+	return store.bolt.Update(func(tx *bolt.Tx) error {
+		err := store.saveDoc(tx, doc)
+		if err != nil {
+			return err
 		}
 
-		// Add time index
+		err = store.saveParagraphs(tx, doc)
+		if err != nil {
+			return err
+		}
+
 		err = store.updateOrCreateSliceForTime(tx, doc.Date, doc.ID)
 		if err != nil {
 			return err
 		}
 
-		// Add terms index
-		err = store.indexTerms(tx, doc, paragraphs)
+		return nil
+	})
+}
+
+func (store *DocumentStore) LoadDocument(id domain.DocumentID) (*domain.Document, error) {
+	var doc domain.Document
+	err := store.bolt.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(store.bucketDocs)
+		data := bucket.Get([]byte(id.String()))
+		if data == nil {
+			return ErrDocumentNotFound
+		}
+
+		// Deserialize DocDb
+		var docDb DocDb
+		buf := bytes.NewBuffer(data)
+		dec := gob.NewDecoder(buf)
+		err := dec.Decode(&docDb)
+		if err != nil {
+			return err
+		}
+
+		// Populate domain.Document
+		doc.ID = domain.DocumentID(docDb.ID)
+		doc.Title = docDb.Title
+		doc.Date = domain.DateTime(docDb.Date)
+		doc.Body = make([]*domain.Paragraph, 0)
+
+		// Load paragraphs, in DocDb.Body we have all paragraph IDs (at any level)
+		// But in domain.Document.Body we only want the top-level paragraphs
+		bucket = tx.Bucket(store.bucketParagraphs)
+		paraMap := make(map[uuid.UUID]*domain.Paragraph)
+
+		// First load all paragraphs into paraMap
+		for _, paraID := range docDb.Body {
+			data := bucket.Get([]byte(paraID.String()))
+			if data == nil {
+				return ErrParagraphNotFound
+			}
+
+			var paraDb ParagraphDb
+			buf := bytes.NewBuffer(data)
+			dec := gob.NewDecoder(buf)
+			err := dec.Decode(&paraDb)
+			if err != nil {
+				return err
+			}
+
+			para := &domain.Paragraph{
+				ID:       domain.ParagraphID(paraDb.ID),
+				Content:  domain.Content(paraDb.Content),
+				Children: make([]*domain.Paragraph, 0),
+			}
+			paraMap[paraDb.ID] = para
+		}
+
+		// Now build the hierarchy and identify top-level paragraphs
+		for _, paraID := range docDb.Body {
+			paraDb := paraMap[paraID]
+			data := bucket.Get([]byte(paraID.String()))
+			var paraData ParagraphDb
+			buf := bytes.NewBuffer(data)
+			dec := gob.NewDecoder(buf)
+			err := dec.Decode(&paraData)
+			if err != nil {
+				return err
+			}
+
+			if paraData.ParentID != nil {
+				parentPara, exists := paraMap[*paraData.ParentID]
+				if exists {
+					parentPara.Children = append(parentPara.Children, paraDb)
+				}
+			} else {
+				// Top-level paragraph
+				doc.Body = append(doc.Body, paraDb)
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &doc, nil
+}
+
+func (store *DocumentStore) GetDocumentForToday(time time.Time) (*domain.Document, error) {
+	date := domain.ToDateTime(time)
+	var docIds map[domain.DocumentID]struct{}
+	err := store.bolt.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(store.bucketTimeIndex)
+		data := bucket.Get([]byte(date))
+		if data == nil {
+			return nil
+		}
+
+		// Deserialize the slice of DocumentIDs
+		buf := bytes.NewBuffer(data)
+		dec := gob.NewDecoder(buf)
+		err := dec.Decode(&docIds)
 		if err != nil {
 			return err
 		}
@@ -121,79 +282,89 @@ func (store *DocumentStore) Save(doc *domain.Document, paragraphs []domain.Parag
 	})
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
-}
-
-func (store *DocumentStore) indexTerms(tx *bolt.Tx, doc *domain.Document, paragraphs []domain.Paragraph) error {
-	bucket := tx.Bucket(store.bucketTermsIndex)
-	for _, para := range paragraphs {
-		words := strings.Fields(string(para.Content))
-		for _, word := range words {
-			term := strings.ToLower(word)
-			indices := bucket.Get([]byte(term))
-			if indices == nil {
-				docIds := []domain.DocumentID{doc.ID}
-				// Serialize the slice
-				var buf bytes.Buffer
-				enc := gob.NewEncoder(&buf)
-				err := enc.Encode(docIds)
-				if err != nil {
-					return err
-				}
-				// Store the serialized slice
-				err = bucket.Put([]byte(term), buf.Bytes())
-				if err != nil {
-					return err
-				}
-			} else {
-				// Deserialize the existing slice
-				var docIds []domain.DocumentID
-				buf := bytes.NewBuffer(indices)
-				dec := gob.NewDecoder(buf)
-				err := dec.Decode(&docIds)
-				if err != nil {
-					return err
-				}
-				// Check if doc.ID is already in docIds
-				found := false
-				for _, id := range docIds {
-					if id == doc.ID {
-						found = true
-						break
-					}
-				}
-				if !found {
-					// Append the new DocumentID
-					docIds = append(docIds, doc.ID)
-					// Serialize the updated slice
-					var outBuf bytes.Buffer
-					enc := gob.NewEncoder(&outBuf)
-					err = enc.Encode(docIds)
-					if err != nil {
-						return err
-					}
-					// Store the serialized slice
-					err = bucket.Put([]byte(term), outBuf.Bytes())
-					if err != nil {
-						return err
-					}
-				}
-			}
+	for docID := range docIds {
+		doc, err := store.LoadDocument(docID)
+		if err != nil {
+			return nil, err
 		}
+
+		return doc, nil
 	}
 
-	return nil
+	return nil, ErrDocumentNotFound
 }
+
+//func (store *DocumentStore) indexTerms(tx *bolt.Tx, doc *domain.Document, paragraphs []domain.Paragraph) error {
+//	bucket := tx.Bucket(store.bucketTermsIndex)
+//	for _, para := range paragraphs {
+//		words := strings.Fields(string(para.Content))
+//		for _, word := range words {
+//			term := strings.ToLower(word)
+//			indices := bucket.Get([]byte(term))
+//			if indices == nil {
+//				docIds := []domain.DocumentID{doc.ID}
+//				// Serialize the slice
+//				var buf bytes.Buffer
+//				enc := gob.NewEncoder(&buf)
+//				err := enc.Encode(docIds)
+//				if err != nil {
+//					return err
+//				}
+//				// Store the serialized slice
+//				err = bucket.Put([]byte(term), buf.Bytes())
+//				if err != nil {
+//					return err
+//				}
+//			} else {
+//				// Deserialize the existing slice
+//				var docIds []domain.DocumentID
+//				buf := bytes.NewBuffer(indices)
+//				dec := gob.NewDecoder(buf)
+//				err := dec.Decode(&docIds)
+//				if err != nil {
+//					return err
+//				}
+//				// Check if doc.ID is already in docIds
+//				found := false
+//				for _, id := range docIds {
+//					if id == doc.ID {
+//						found = true
+//						break
+//					}
+//				}
+//				if !found {
+//					// Append the new DocumentID
+//					docIds = append(docIds, doc.ID)
+//					// Serialize the updated slice
+//					var outBuf bytes.Buffer
+//					enc := gob.NewEncoder(&outBuf)
+//					err = enc.Encode(docIds)
+//					if err != nil {
+//						return err
+//					}
+//					// Store the serialized slice
+//					err = bucket.Put([]byte(term), outBuf.Bytes())
+//					if err != nil {
+//						return err
+//					}
+//				}
+//			}
+//		}
+//	}
+//
+//	return nil
+//}
+//
 
 func (store *DocumentStore) updateOrCreateSliceForTime(tx *bolt.Tx, dateTime domain.DateTime, docID domain.DocumentID) error {
 	// Get or create a slice of DocumentIDs for the given time
 	bucket := tx.Bucket(store.bucketTimeIndex)
 	documents := bucket.Get([]byte(dateTime))
 	if documents == nil {
-		docIds := []domain.DocumentID{docID}
+		docIds := map[domain.DocumentID]struct{}{}
 		// Serialize the slice
 		var buf bytes.Buffer
 		enc := gob.NewEncoder(&buf)
@@ -208,15 +379,14 @@ func (store *DocumentStore) updateOrCreateSliceForTime(tx *bolt.Tx, dateTime dom
 		}
 	} else {
 		// Deserialize the existing slice
-		var docIds []domain.DocumentID
+		var docIds map[domain.DocumentID]struct{}
 		buf := bytes.NewBuffer(documents)
 		dec := gob.NewDecoder(buf)
 		err := dec.Decode(&docIds)
 		if err != nil {
 			return err
 		}
-		// Append the new DocumentID
-		docIds = append(docIds, docID)
+		docIds[docID] = struct{}{}
 		// Serialize the updated slice
 		var outBuf bytes.Buffer
 		enc := gob.NewEncoder(&outBuf)
@@ -237,108 +407,144 @@ func (store *DocumentStore) updateOrCreateSliceForTime(tx *bolt.Tx, dateTime dom
 var ErrDocumentNotFound = errors.New("document not found")
 var ErrParagraphNotFound = errors.New("paragraph not found")
 
-func (store *DocumentStore) LoadDocument(id domain.DocumentID) (*domain.Document, map[domain.ParagraphID]domain.Paragraph, error) {
-	var doc domain.Document
-	paras := make(map[domain.ParagraphID]domain.Paragraph)
-	err := store.bolt.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket(store.bucketDocs)
-		data := bucket.Get([]byte(id.String()))
-		if data == nil {
-			return ErrDocumentNotFound
-		}
-
-		err := doc.Deserialize(data)
-		if err != nil {
-			return err
-		}
-
-		bucket = tx.Bucket(store.bucketParagraphs)
-		for _, paraID := range doc.Body {
-			data := bucket.Get([]byte(paraID.String()))
-			if data == nil {
-				return ErrParagraphNotFound
-			}
-
-			var para domain.Paragraph
-			err := para.Deserialize(data)
-			if err != nil {
-				return err
-			}
-			paras[paraID] = para
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return &doc, paras, nil
-}
-
-func (store *DocumentStore) Load(from, to domain.DateTime) ([]domain.DocumentID, error) {
-	docs := make([]domain.DocumentID, 0)
-	err := store.bolt.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket(store.bucketTimeIndex)
-		fromBytes := []byte(from)
-		toBytes := []byte(to)
-
-		c := bucket.Cursor()
-		for k, v := c.Seek(fromBytes); k != nil && bytes.Compare(k, toBytes) <= 0; k, v = c.Next() {
-			// Deserialize the slice of DocumentIDs
-			var docIds []domain.DocumentID
-			buf := bytes.NewBuffer(v)
-			dec := gob.NewDecoder(buf)
-			err := dec.Decode(&docIds)
-			if err != nil {
-				return err
-			}
-			docs = append(docs, docIds...)
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return docs, nil
-}
-
-func (store *DocumentStore) Search(terms []string) ([]domain.DocumentID, error) {
-	docs := make([]domain.DocumentID, 0)
-	err := store.bolt.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket(store.bucketTermsIndex)
-		for _, term := range terms {
-			term = strings.ToLower(term)
-			data := bucket.Get([]byte(term))
-			if data == nil {
-				continue
-			}
-
-			// Deserialize the slice of DocumentIDs
-			var docIds []domain.DocumentID
-			buf := bytes.NewBuffer(data)
-			dec := gob.NewDecoder(buf)
-			err := dec.Decode(&docIds)
-			if err != nil {
-				return err
-			}
-			docs = append(docs, docIds...)
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return docs, nil
-}
-
-func (store *DocumentStore) GetReferences(documentID uuid.UUID) ([]domain.Document, error) {
-	return nil, nil
-}
+//func (store *DocumentStore) LoadDocument(id domain.DocumentID) (*domain.Document, map[domain.ParagraphID]domain.Paragraph, error) {
+//	var doc domain.Document
+//	paras := make(map[domain.ParagraphID]domain.Paragraph)
+//	err := store.bolt.View(func(tx *bolt.Tx) error {
+//		bucket := tx.Bucket(store.bucketDocs)
+//		data := bucket.Get([]byte(id.String()))
+//		if data == nil {
+//			return ErrDocumentNotFound
+//		}
+//
+//		err := doc.Deserialize(data)
+//		if err != nil {
+//			return err
+//		}
+//
+//		bucket = tx.Bucket(store.bucketParagraphs)
+//		for _, paraID := range doc.Body {
+//			data := bucket.Get([]byte(paraID.String()))
+//			if data == nil {
+//				return ErrParagraphNotFound
+//			}
+//
+//			var para domain.Paragraph
+//			err := para.Deserialize(data)
+//			if err != nil {
+//				return err
+//			}
+//			paras[paraID] = para
+//		}
+//
+//		return nil
+//	})
+//
+//	if err != nil {
+//		return nil, nil, err
+//	}
+//
+//	return &doc, paras, nil
+//}
+//
+//func (store *DocumentStore) LoadDate(date domain.DateTime) (*domain.Document, map[domain.ParagraphID]domain.Paragraph, error) {
+//	var docIds []domain.DocumentID
+//	err := store.bolt.View(func(tx *bolt.Tx) error {
+//		bucket := tx.Bucket(store.bucketTimeIndex)
+//		data := bucket.Get([]byte(date))
+//		if data == nil {
+//			return nil
+//		}
+//
+//		// Deserialize the slice of DocumentIDs
+//		buf := bytes.NewBuffer(data)
+//		dec := gob.NewDecoder(buf)
+//		err := dec.Decode(&docIds)
+//		if err != nil {
+//			return err
+//		}
+//
+//		return nil
+//	})
+//
+//	if err != nil {
+//		return nil, nil, err
+//	}
+//
+//	if len(docIds) == 0 {
+//		return nil, nil, ErrDocumentNotFound
+//	}
+//
+//	doc, paras, err := store.LoadDocument(docIds[0])
+//	if err != nil {
+//		return nil, nil, err
+//	}
+//
+//	return doc, paras, nil
+//}
+//
+//func (store *DocumentStore) Load(from, to domain.DateTime) ([]domain.DocumentID, error) {
+//	docs := make([]domain.DocumentID, 0)
+//	err := store.bolt.View(func(tx *bolt.Tx) error {
+//		bucket := tx.Bucket(store.bucketTimeIndex)
+//		fromBytes := []byte(from)
+//		toBytes := []byte(to)
+//
+//		c := bucket.Cursor()
+//		for k, v := c.Seek(fromBytes); k != nil && bytes.Compare(k, toBytes) <= 0; k, v = c.Next() {
+//			// Deserialize the slice of DocumentIDs
+//			var docIds []domain.DocumentID
+//			buf := bytes.NewBuffer(v)
+//			dec := gob.NewDecoder(buf)
+//			err := dec.Decode(&docIds)
+//			if err != nil {
+//				return err
+//			}
+//			docs = append(docs, docIds...)
+//		}
+//
+//		return nil
+//	})
+//
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return docs, nil
+//}
+//
+//func (store *DocumentStore) Search(terms []string) ([]domain.DocumentID, error) {
+//	docs := make([]domain.DocumentID, 0)
+//	err := store.bolt.View(func(tx *bolt.Tx) error {
+//		bucket := tx.Bucket(store.bucketTermsIndex)
+//		for _, term := range terms {
+//			term = strings.ToLower(term)
+//			data := bucket.Get([]byte(term))
+//			if data == nil {
+//				continue
+//			}
+//
+//			// Deserialize the slice of DocumentIDs
+//			var docIds []domain.DocumentID
+//			buf := bytes.NewBuffer(data)
+//			dec := gob.NewDecoder(buf)
+//			err := dec.Decode(&docIds)
+//			if err != nil {
+//				return err
+//			}
+//			docs = append(docs, docIds...)
+//		}
+//
+//		return nil
+//	})
+//
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return docs, nil
+//}
+//
+//func (store *DocumentStore) GetReferences(documentID uuid.UUID) ([]domain.Document, error) {
+//	return nil, nil
+//}

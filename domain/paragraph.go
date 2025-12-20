@@ -1,9 +1,6 @@
 package domain
 
 import (
-	"bytes"
-	"encoding/gob"
-
 	"github.com/google/uuid"
 )
 
@@ -16,34 +13,28 @@ func (id ParagraphID) String() string {
 }
 
 type Paragraph struct {
-	ID         ParagraphID
-	DocumentID DocumentID
-	Parent     *ParagraphID
-	Children   []*ParagraphID
-	Content    Content
-	References []ParagraphID
+	ID       ParagraphID
+	Children []*Paragraph
+	Content  Content
 }
 
-func (paragraph *Paragraph) Serialize() ([]byte, error) {
-	var b bytes.Buffer
-	enc := gob.NewEncoder(&b)
-
-	err := enc.Encode(*paragraph)
-	if err != nil {
-		return nil, err
+func NewParagraph(content Content) *Paragraph {
+	return &Paragraph{
+		ID:       ParagraphID(uuid.New()),
+		Content:  content,
+		Children: []*Paragraph{},
 	}
-
-	return b.Bytes(), nil
 }
 
-func (paragraph *Paragraph) Deserialize(data []byte) error {
-	b := bytes.NewBuffer(data)
-	dec := gob.NewDecoder(b)
+func (p *Paragraph) AddChild(child *Paragraph) {
+	p.Children = append(p.Children, child)
+}
 
-	err := dec.Decode(paragraph)
-	if err != nil {
-		return err
+func (p *Paragraph) RemoveChild(child *Paragraph) {
+	for i, c := range p.Children {
+		if c.ID == child.ID {
+			p.Children = append(p.Children[:i], p.Children[i+1:]...)
+			return
+		}
 	}
-
-	return nil
 }
