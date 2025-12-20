@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"glog/db"
 	"glog/domain"
 	"time"
@@ -29,20 +30,20 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 }
 
-var docDto *DocumentDto
-
-func (a *App) LoadTodayDocument() (*DocumentDto, error) {
-	doc, err := a.store.GetDocumentForToday(time.Now().Truncate(24 * time.Hour))
+func (a *App) LoadJournal(date time.Time) (*DocumentDto, error) {
+	t := date.Truncate(24 * time.Hour)
+	doc, err := a.store.GetDocumentForToday(t)
 	if err != nil {
 		if !errors.Is(err, db.ErrDocumentNotFound) {
 			return nil, err
 		}
 	}
 
+	var docDto *DocumentDto
 	if doc == nil {
 		docDto = &DocumentDto{
 			ID:    uuid.NewString(),
-			Title: "Sample Document",
+			Title: fmt.Sprintf("%s, %s", t.Format("Monday"), t.Format("02/01/2006")),
 			Date:  string(domain.ToDateTime(time.Now().Truncate(24 * time.Hour))),
 			Body: []ParagraphDto{
 				{
@@ -71,6 +72,23 @@ func (a *App) LoadTodayDocument() (*DocumentDto, error) {
 	return docDto, nil
 }
 
+func (a *App) LoadJournalsFromTo(from time.Time, to time.Time) ([]*DocumentDto, error) {
+	fmt.Printf("Loading journals from %v to %v\n", from, to)
+	fromTruncate := from.Truncate(24 * time.Hour)
+	toTruncate := to.Truncate(24 * time.Hour)
+	docs := make([]*DocumentDto, 0)
+	current := fromTruncate
+	for !current.Before(toTruncate) {
+		doc, err := a.LoadJournal(current)
+		if err != nil {
+			return nil, err
+		}
+		current = current.Add(-24 * time.Hour)
+		docs = append(docs, doc)
+	}
+	return docs, nil
+}
+
 func (a *App) SaveDocument(d *DocumentDto) error {
 	doc, err := ToDomain(d)
 	if err != nil {
@@ -83,4 +101,8 @@ func (a *App) SaveDocument(d *DocumentDto) error {
 	}
 
 	return nil
+}
+
+func (a *App) LoadTodayDocument() (*DocumentDto, error) {
+	return a.LoadJournal(time.Now())
 }
