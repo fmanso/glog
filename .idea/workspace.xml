@@ -5,15 +5,22 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7ebe2fc4-2f0d-46a6-84e2-7f4951ca83d3" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/frontend/src/components/DocumentViewer.svelte" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app.go" beforeDir="false" afterPath="$PROJECT_DIR$/app.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/db/db.go" beforeDir="false" afterPath="$PROJECT_DIR$/db/db.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/db/db_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/db/db_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/package.json.md5" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package.json.md5" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/App.svelte" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.svelte" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/DocumentViewer.svelte" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/components/DocumentViewer.svelte" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/wailsjs/go/main/App.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/wailsjs/go/main/App.d.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/wailsjs/go/main/App.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/wailsjs/go/main/App.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/wailsjs/go/models.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/wailsjs/go/models.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/wailsjs/runtime/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/wailsjs/runtime/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/wailsjs/runtime/runtime.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/wailsjs/runtime/runtime.d.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/wailsjs/runtime/runtime.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/wailsjs/runtime/runtime.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/glog.db" beforeDir="false" afterPath="$PROJECT_DIR$/glog.db" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/glog.db.lock" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -28,7 +35,7 @@
       </list>
     </option>
   </component>
-  <component name="GOROOT" url="file://$USER_HOME$/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.9.windows-amd64" />
+  <component name="GOROOT" url="file://$USER_HOME$/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.0.windows-amd64" />
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
@@ -52,40 +59,42 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;DefaultGoTemplateProperty&quot;: &quot;Go File&quot;,
-    &quot;Go Test.TestLoad in glog/db.executor&quot;: &quot;Run&quot;,
-    &quot;Go Test.TestLoad in glog/domain.executor&quot;: &quot;Run&quot;,
-    &quot;Go Test.TestNewDocumentStore in glog/domain.executor&quot;: &quot;Run&quot;,
-    &quot;Go Test.TestSave in glog/db.executor&quot;: &quot;Run&quot;,
-    &quot;Go Test.TestSave in glog/domain.executor&quot;: &quot;Run&quot;,
-    &quot;Go Test.TestSearch in glog/domain.executor&quot;: &quot;Run&quot;,
-    &quot;Go Test.go test glog/domain.executor&quot;: &quot;Run&quot;,
-    &quot;Go Test.gobench glog/db.executor&quot;: &quot;Run&quot;,
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.GoLinterPluginOnboardingV2&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.GoLinterPluginStorageMigration&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.go.formatter.settings.were.checked&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.go.modules.go.list.on.any.changes.was.set&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/brok3/GolandProjects/glog&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.keymap&quot;,
-    &quot;ts.external.directory.path&quot;: &quot;C:\\Users\\brok3\\GolandProjects\\glog\\frontend\\node_modules\\typescript\\lib&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "DefaultGoTemplateProperty": "Go File",
+    "Go Test.TestLoad in glog/db.executor": "Run",
+    "Go Test.TestLoad in glog/domain.executor": "Run",
+    "Go Test.TestNewDocumentStore in glog/domain.executor": "Run",
+    "Go Test.TestSave in glog/db.executor": "Run",
+    "Go Test.TestSave in glog/domain.executor": "Run",
+    "Go Test.TestSearch in glog/domain.executor": "Run",
+    "Go Test.go test glog/domain.executor": "Run",
+    "Go Test.gobench glog/db.executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.GoLinterPluginOnboardingV2": "true",
+    "RunOnceActivity.GoLinterPluginStorageMigration": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.go.formatter.settings.were.checked": "true",
+    "RunOnceActivity.go.modules.go.list.on.any.changes.was.set": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "git-widget-placeholder": "master",
+    "go.sdk.automatically.set": "true",
+    "ignore.virus.scanning.warn.message": "true",
+    "last_opened_file_path": "C:/Users/brok3",
+    "node.js.detected.package.eslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "com.goide.configuration.GoProjectSettingsConfigurable",
+    "ts.external.directory.path": "C:\\Program Files\\JetBrains\\GoLand 2025.3\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external"
   },
-  &quot;keyToStringList&quot;: {
-    &quot;DatabaseDriversLRU&quot;: [
-      &quot;sqlite&quot;
+  "keyToStringList": {
+    "DatabaseDriversLRU": [
+      "sqlite"
     ]
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\Users\brok3\GolandProjects\glog" />

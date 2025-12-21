@@ -1,11 +1,64 @@
 <script lang="ts">
+  import { SaveDocument } from '../../wailsjs/go/main/App';
   import {main} from '../../wailsjs/go/models';
+  import {tick} from 'svelte';
   export let document: main.DocumentDto;
+
+  let debounceTimer: any;
+  let inputElements: HTMLInputElement[] = [];
+
+  function handleClick(paragraph: main.ParagraphDto) {
+
+  }
+
+  async function handleKeyDown(event: KeyboardEvent, paragraph: main.ParagraphDto) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        let index = document.body.indexOf(paragraph);
+        // Add new paragraph after current
+        document.body.splice(index + 1, 0, {content: ''} as main.ParagraphDto);
+        document = document;
+        await tick();
+        inputElements[index+1]?.focus();
+    } else if (event.key === 'Backspace') {
+        if (paragraph.content === '' && (!paragraph.children || paragraph.children.length == 0)) {
+            event.preventDefault();
+            let index = document.body.indexOf(paragraph);
+            if (index > 0) {
+                // Remove current paragraph
+                document.body.splice(index, 1);
+                document = document;
+                await tick();
+                inputElements[index - 1]?.focus();
+            }
+        }
+    }
+  }
+
+  function handleInput(event: Event, paragraph: main.ParagraphDto) {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      console.log('User stopped typing');
+      SaveDocument(document);
+    }, 300);
+  }
 </script>
 
 <main>
-    <h1>{document.title}</h1>
-
+    {#if !document}
+        <h1>Loading...</h1>
+    {:else}
+        <h1>{document.title}</h1>
+        <!-- For each paragraph in document.paragraphs, render a <p> element -->
+        {#each document.body as paragraph, i}
+            <input type="textarea"
+                   bind:this={inputElements[i]}
+                   bind:value={paragraph.content}
+                   on:click={() => handleClick(paragraph)}
+                   on:keydown={(e) => handleKeyDown(e, paragraph)}
+                   on:input={(e) => handleInput(e, paragraph)}/>
+        {/each}
+    {/if}
 </main>
 
 
@@ -13,6 +66,17 @@
     h1 {
         font-size: 24px;
         margin: 0 0 16px 0;
+    }
+
+    input {
+        background: transparent;
+        border: none;
+        color: inherit;
+        width: 100%;
+        outline: none;
+        font-size: 1rem;
+        font-family: inherit;
+        padding: 4px 0;
     }
 
     main {

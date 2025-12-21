@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"glog/db"
 	"glog/domain"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -32,15 +33,20 @@ func (a *App) startup(ctx context.Context) {
 
 func (a *App) LoadJournal(date time.Time) (*DocumentDto, error) {
 	t := date.Truncate(24 * time.Hour)
+	log.Printf("Loading journal for date: %v\n", t)
+
 	doc, err := a.store.GetDocumentForToday(t)
 	if err != nil {
 		if !errors.Is(err, db.ErrDocumentNotFound) {
 			return nil, err
 		}
+		log.Printf("Error retrieving document: %v\n", err)
+		return nil, err
 	}
 
 	var docDto *DocumentDto
 	if doc == nil {
+		log.Printf("No journal found for date: %v, creating a new one\n", t)
 		docDto = &DocumentDto{
 			ID:    uuid.NewString(),
 			Title: fmt.Sprintf("%s, %s", t.Format("Monday"), t.Format("02/01/2006")),
@@ -63,6 +69,7 @@ func (a *App) LoadJournal(date time.Time) (*DocumentDto, error) {
 			},
 		}
 	} else {
+		log.Printf("Journal found for date: %v, loading existing journal\n", t)
 		docDto, err = FromDomain(doc)
 		if err != nil {
 			return nil, err
@@ -90,6 +97,7 @@ func (a *App) LoadJournalsFromTo(from time.Time, to time.Time) ([]*DocumentDto, 
 }
 
 func (a *App) SaveDocument(d *DocumentDto) error {
+	log.Printf("Saving document ID: %s, Title: %s\n", d.ID, d.Title)
 	doc, err := ToDomain(d)
 	if err != nil {
 		return err

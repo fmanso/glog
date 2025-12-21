@@ -1,6 +1,6 @@
 module glog
 
-go 1.23
+go 1.25
 
 require (
 	github.com/boltdb/bolt v1.3.1

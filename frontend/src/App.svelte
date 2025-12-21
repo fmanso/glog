@@ -1,23 +1,19 @@
 <script lang="ts">
   import DocumentViewer from './components/DocumentViewer.svelte';
-  import {LoadJournalsFromTo} from "../wailsjs/go/main/App";
+  import {LoadJournal} from "../wailsjs/go/main/App";
 
-  let documents = [];
+  let document: DocumentDto = undefined;
 
-  // arg1 is today, arg2 is 7 days ago
-  const now: Date = new Date();
-  const sevenDaysAgo: Date = new Date();
-  sevenDaysAgo.setDate(now.getDate()-7);
-  LoadJournalsFromTo(now.toISOString(), sevenDaysAgo.toISOString()).then((docs) => {
-    console.log(docs)
-    documents = docs;
+  let date = new Date();
+  date.setHours(0, 0, 0, 0);
+  LoadJournal(date).then((doc) => {
+      console.log(doc);
+      document = doc;
   });
 </script>
 
 <main class="page dark">
-  {#each documents as document}
     <DocumentViewer {document} />
-  {/each}
 </main>
 
 <style>

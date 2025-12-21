@@ -260,7 +260,7 @@ func (store *DocumentStore) LoadDocument(id domain.DocumentID) (*domain.Document
 	return &doc, nil
 }
 
-func (store *DocumentStore) GetDocumentForToday(time time.Time) (*domain.Document, error) {
+func (store *DocumentStore) GetDocumentFor(time time.Time) (*domain.Document, error) {
 	date := domain.ToDateTime(time)
 	var docIds map[domain.DocumentID]struct{}
 	err := store.bolt.View(func(tx *bolt.Tx) error {
@@ -290,7 +290,6 @@ func (store *DocumentStore) GetDocumentForToday(time time.Time) (*domain.Documen
 		if err != nil {
 			return nil, err
 		}
-
 		return doc, nil
 	}
 
