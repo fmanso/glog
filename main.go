@@ -4,6 +4,7 @@ import (
 	"embed"
 	"glog/db"
 
+	"github.com/labstack/gommon/log"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -13,6 +14,8 @@ import (
 var assets embed.FS
 
 func main() {
+	// Setup logging in Debug mode
+	log.SetLevel(log.DEBUG)
 	dbStore, err := db.NewDocumentStore("glog.db")
 	if err != nil {
 		panic("Failed to initialize database: " + err.Error())

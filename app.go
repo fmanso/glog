@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"glog/db"
 	"glog/domain"
@@ -35,13 +34,9 @@ func (a *App) LoadJournal(date time.Time) (*DocumentDto, error) {
 	t := date.Truncate(24 * time.Hour)
 	log.Printf("Loading journal for date: %v\n", t)
 
-	doc, err := a.store.GetDocumentForToday(t)
+	doc, err := a.store.GetDocumentFor(t)
 	if err != nil {
-		if !errors.Is(err, db.ErrDocumentNotFound) {
-			return nil, err
-		}
-		log.Printf("Error retrieving document: %v\n", err)
-		return nil, err
+		// Ignore
 	}
 
 	var docDto *DocumentDto
@@ -50,7 +45,7 @@ func (a *App) LoadJournal(date time.Time) (*DocumentDto, error) {
 		docDto = &DocumentDto{
 			ID:    uuid.NewString(),
 			Title: fmt.Sprintf("%s, %s", t.Format("Monday"), t.Format("02/01/2006")),
-			Date:  string(domain.ToDateTime(time.Now().Truncate(24 * time.Hour))),
+			Date:  string(domain.ToDateTime(time.Now().UTC().Truncate(24 * time.Hour))),
 			Body: []ParagraphDto{
 				{
 					ID:      uuid.NewString(),
@@ -112,5 +107,5 @@ func (a *App) SaveDocument(d *DocumentDto) error {
 }
 
 func (a *App) LoadTodayDocument() (*DocumentDto, error) {
-	return a.LoadJournal(time.Now())
+	return a.LoadJournal(time.Now().UTC())
 }

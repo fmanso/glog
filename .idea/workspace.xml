@@ -21,6 +21,7 @@
       <change beforePath="$PROJECT_DIR$/frontend/wailsjs/runtime/runtime.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/wailsjs/runtime/runtime.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/glog.db" beforeDir="false" afterPath="$PROJECT_DIR$/glog.db" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/main.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -64,9 +65,11 @@
     "DefaultGoTemplateProperty": "Go File",
     "Go Test.TestLoad in glog/db.executor": "Run",
     "Go Test.TestLoad in glog/domain.executor": "Run",
+    "Go Test.TestLoadForEmpty in glog/db.executor": "Run",
     "Go Test.TestNewDocumentStore in glog/domain.executor": "Run",
     "Go Test.TestSave in glog/db.executor": "Run",
     "Go Test.TestSave in glog/domain.executor": "Run",
+    "Go Test.TestSaveAndLoad in glog/db.executor": "Run",
     "Go Test.TestSearch in glog/domain.executor": "Run",
     "Go Test.go test glog/domain.executor": "Run",
     "Go Test.gobench glog/db.executor": "Run",
@@ -86,8 +89,8 @@
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "com.goide.configuration.GoProjectSettingsConfigurable",
-    "ts.external.directory.path": "C:\\Program Files\\JetBrains\\GoLand 2025.3\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external"
+    "settings.editor.selected.configurable": "preferences.editor",
+    "ts.external.directory.path": "C:\\Users\\brok3\\GolandProjects\\glog\\frontend\\node_modules\\typescript\\lib"
   },
   "keyToStringList": {
     "DatabaseDriversLRU": [
@@ -103,7 +106,7 @@
       <recent name="C:\Users\brok3\GolandProjects\glog\db" />
     </key>
   </component>
-  <component name="RunManager" selected="Go Test.TestLoad in glog/db">
+  <component name="RunManager" selected="Go Test.TestSaveAndLoad in glog/db">
     <configuration name="TestLoad in glog/db" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="glog" />
       <working_directory value="$PROJECT_DIR$/db" />
@@ -116,16 +119,16 @@
       <pattern value="^\QTestLoad\E$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestLoad in glog/domain" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestLoadForEmpty in glog/db" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="glog" />
-      <working_directory value="$PROJECT_DIR$/domain" />
+      <working_directory value="$PROJECT_DIR$/db" />
       <root_directory value="$PROJECT_DIR$" />
       <kind value="PACKAGE" />
-      <package value="glog/domain" />
+      <package value="glog/db" />
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
       <framework value="gotest" />
-      <pattern value="^\QTestLoad\E$" />
+      <pattern value="^\QTestLoadForEmpty\E$" />
       <method v="2" />
     </configuration>
     <configuration name="TestSave in glog/db" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
@@ -140,16 +143,16 @@
       <pattern value="^\QTestSave\E$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestSearch in glog/domain" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestSaveAndLoad in glog/db" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="glog" />
-      <working_directory value="$PROJECT_DIR$/domain" />
+      <working_directory value="$PROJECT_DIR$/db" />
       <root_directory value="$PROJECT_DIR$" />
       <kind value="PACKAGE" />
-      <package value="glog/domain" />
+      <package value="glog/db" />
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
       <framework value="gotest" />
-      <pattern value="^\QTestSearch\E$" />
+      <pattern value="^\QTestSaveAndLoad\E$" />
       <method v="2" />
     </configuration>
     <configuration name="gobench glog/db" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
@@ -165,11 +168,11 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Go Test.TestSaveAndLoad in glog/db" />
+        <item itemvalue="Go Test.TestLoadForEmpty in glog/db" />
         <item itemvalue="Go Test.TestLoad in glog/db" />
         <item itemvalue="Go Test.TestSave in glog/db" />
         <item itemvalue="Go Test.gobench glog/db" />
-        <item itemvalue="Go Test.TestSearch in glog/domain" />
-        <item itemvalue="Go Test.TestLoad in glog/domain" />
       </list>
     </recent_temporary>
   </component>

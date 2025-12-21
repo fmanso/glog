@@ -10,6 +10,7 @@ import (
 	"github.com/boltdb/bolt"
 	_ "github.com/boltdb/bolt"
 	"github.com/google/uuid"
+	"github.com/labstack/gommon/log"
 )
 
 type DocumentStore struct {
@@ -80,6 +81,8 @@ type ParagraphDb struct {
 }
 
 func (store *DocumentStore) saveDoc(tx *bolt.Tx, doc *domain.Document) error {
+	log.Debug("Saving document: %v", doc)
+
 	// Create DocDb from domain.Document
 	docDb := DocDb{
 		ID:    uuid.UUID(doc.ID),
@@ -364,6 +367,7 @@ func (store *DocumentStore) updateOrCreateSliceForTime(tx *bolt.Tx, dateTime dom
 	documents := bucket.Get([]byte(dateTime))
 	if documents == nil {
 		docIds := map[domain.DocumentID]struct{}{}
+		docIds[docID] = struct{}{}
 		// Serialize the slice
 		var buf bytes.Buffer
 		enc := gob.NewEncoder(&buf)

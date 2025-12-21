@@ -1,11 +1,11 @@
 <script lang="ts">
   import DocumentViewer from './components/DocumentViewer.svelte';
   import {LoadJournal} from "../wailsjs/go/main/App";
+  import {main} from "../wailsjs/go/models";
 
-  let document: DocumentDto = undefined;
+  let document: main.DocumentDto = undefined;
 
   let date = new Date();
-  date.setHours(0, 0, 0, 0);
   LoadJournal(date).then((doc) => {
       console.log(doc);
       document = doc;
