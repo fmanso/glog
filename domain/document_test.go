@@ -79,6 +79,38 @@ func TestGetParent(t *testing.T) {
 	if parent == nil {
 		t.Fatal("Expected parent paragraph, got nil")
 	}
-	
+
 	assert.Equal(t, child1.ID, parent.ID)
+}
+
+func TestIndentRoot(t *testing.T) {
+	doc := NewDocument("test document", ToDateTime(time.Now().UTC()))
+	para1 := doc.InsertParagraph(0, "First paragraph")
+	para2 := doc.InsertParagraph(1, "Second paragraph")
+
+	para, parent, err := doc.Indent(para2.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, para2.ID, para.ID)
+	assert.Equal(t, para1.ID, parent.ID)
+	assert.Equal(t, 1, len(para1.Children))
+	assert.Equal(t, para2.ID, para1.Children[0].ID)
+	assert.Equal(t, 1, len(doc.Body))
+}
+
+func TestIndent(t *testing.T) {
+	doc := NewDocument("test document", ToDateTime(time.Now().UTC()))
+	para1 := doc.InsertParagraph(0, "First paragraph")
+	child1 := NewParagraph("Child paragraph 1")
+	para1.AddChild(child1)
+	child2 := NewParagraph("Child paragraph 2")
+	para1.AddChild(child2)
+
+	para, parent, err := doc.Indent(child2.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, child2.ID, para.ID)
+	assert.Equal(t, child1.ID, parent.ID)
+	assert.Equal(t, 1, len(para1.Children))
+	assert.Equal(t, 1, len(child1.Children))
+	assert.Equal(t, child2.ID, child1.Children[0].ID)
+	assert.Equal(t, 1, len(doc.Body))
 }
