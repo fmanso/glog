@@ -115,6 +115,36 @@ func (store *DocumentStore) saveDoc(tx *bolt.Tx, doc *domain.Document) error {
 	return bucket.Put([]byte(doc.ID.String()), buf.Bytes())
 }
 
+func (store *DocumentStore) SetParagraphContent(id domain.ParagraphID, content domain.Content) error {
+	bucket := store.bucketParagraphs
+	return store.bolt.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bucket)
+		data := b.Get([]byte(id.String()))
+		if data == nil {
+			return ErrParagraphNotFound
+		}
+
+		var paraDb ParagraphDb
+		buf := bytes.NewBuffer(data)
+		dec := gob.NewDecoder(buf)
+		err := dec.Decode(&paraDb)
+		if err != nil {
+			return err
+		}
+
+		paraDb.Content = string(content)
+
+		var outBuf bytes.Buffer
+		enc := gob.NewEncoder(&outBuf)
+		err = enc.Encode(paraDb)
+		if err != nil {
+			return err
+		}
+
+		return b.Put([]byte(paraDb.ID.String()), outBuf.Bytes())
+	})
+}
+
 func (store *DocumentStore) saveParagraphs(tx *bolt.Tx, doc *domain.Document) error {
 	bucket := tx.Bucket(store.bucketParagraphs)
 

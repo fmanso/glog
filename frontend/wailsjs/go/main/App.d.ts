@@ -10,3 +10,5 @@ export function LoadJournalsFromTo(arg1:time.Time,arg2:time.Time):Promise<Array<
 export function LoadTodayDocument():Promise<main.DocumentDto>;
 
 export function SaveDocument(arg1:main.DocumentDto):Promise<void>;
+
+export function SetParagraphContent(arg1:string,arg2:string):Promise<string>;

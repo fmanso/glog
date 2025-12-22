@@ -17,3 +17,7 @@ export function LoadTodayDocument() {
 export function SaveDocument(arg1) {
   return window['go']['main']['App']['SaveDocument'](arg1);
 }
+
+export function SetParagraphContent(arg1, arg2) {
+  return window['go']['main']['App']['SetParagraphContent'](arg1, arg2);
+}

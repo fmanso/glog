@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { SaveDocument } from '../../wailsjs/go/main/App';
+    import {SaveDocument, SetParagraphContent} from '../../wailsjs/go/main/App';
   import {main} from '../../wailsjs/go/models';
   import {tick} from 'svelte';
   export let document: main.DocumentDto;
@@ -39,7 +39,9 @@
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       console.log('User stopped typing');
-      SaveDocument(document);
+      SetParagraphContent(paragraph.id, paragraph.content).then(() => {
+          console.log('Paragraph content saved');
+      });
     }, 300);
   }
 </script>

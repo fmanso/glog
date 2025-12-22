@@ -1,8 +1,6 @@
 package domain
 
 import (
-	"time"
-
 	"github.com/google/uuid"
 )
 
@@ -13,21 +11,31 @@ func (id DocumentID) String() string {
 }
 
 type Document struct {
-	ID    DocumentID
-	Title string
-	Date  DateTime
-	Body  []*Paragraph
+	ID         DocumentID
+	Title      string
+	Date       DateTime
+	Body       []*Paragraph
+	paragraphs int
 }
 
-func NewDocument(title string, date time.Time) *Document {
+func NewDocument(title string, date DateTime) *Document {
 	return &Document{
 		ID:    DocumentID(uuid.New()),
 		Title: title,
-		Date:  ToDateTime(date),
-		Body:  make([]*Paragraph, 0),
+		Date:  date,
+		Body:  []*Paragraph{},
 	}
 }
 
-func (doc *Document) SetBody(paragraphs []*Paragraph) {
-	doc.Body = paragraphs
+func (d *Document) InsertParagraph(index int, content string) {
+	para := NewParagraph(Content(content))
+
+	// Insert at the specified index
+	if index < 0 || index > len(d.Body) {
+		d.Body = append(d.Body, para)
+	} else {
+		d.Body = append(d.Body[:index], append([]*Paragraph{para}, d.Body[index:]...)...)
+	}
+
+	d.paragraphs++
 }

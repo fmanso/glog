@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"glog/db"
+	"glog/services"
 
 	"github.com/labstack/gommon/log"
 	"github.com/wailsapp/wails/v2"
@@ -22,8 +23,10 @@ func main() {
 	}
 
 	defer dbStore.Close()
+
+	docService := services.NewDocumentService(dbStore)
 	// Create an instance of the app structure
-	app := NewApp(dbStore)
+	app := NewApp(dbStore, docService)
 
 	// Create application with options
 	err = wails.Run(&options.App{
