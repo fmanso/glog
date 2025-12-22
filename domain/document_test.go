@@ -114,3 +114,18 @@ func TestIndent(t *testing.T) {
 	assert.Equal(t, child2.ID, child1.Children[0].ID)
 	assert.Equal(t, 1, len(doc.Body))
 }
+
+func TestIndent2(t *testing.T) {
+	doc := NewDocument("test document", ToDateTime(time.Now().UTC()))
+	para1 := doc.InsertParagraph(0, "First paragraph")
+	child1 := NewParagraph("Child paragraph 1")
+	para1.AddChild(child1)
+	child2 := NewParagraph("Child paragraph 2")
+	para1.AddChild(child2)
+
+	_, _, err := doc.Indent(child1.ID)
+	assert.Error(t, err)
+	if err == nil {
+		t.Fatal("Expected error when indenting first child, got nil")
+	}
+}
