@@ -16,3 +16,5 @@ export function LoadTodayDocument():Promise<main.DocumentDto>;
 export function SaveDocument(arg1:main.DocumentDto):Promise<void>;
 
 export function SetParagraphContent(arg1:string,arg2:string):Promise<string>;
+
+export function UnIndent(arg1:string,arg2:main.ParagraphDto):Promise<main.ParagraphDto>;

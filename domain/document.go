@@ -199,3 +199,51 @@ func (d *Document) Indent(paraID ParagraphID) (*Paragraph, *Paragraph, error) {
 
 	return para, newParent, nil
 }
+
+// UnIndent changes the parent of the paragraph with the given ID to be its current parent's parent.
+// It returns the unindented paragraph and its new parent (which may be nil if it becomes a top-level paragraph), or an error if the operation is not possible.
+func (d *Document) UnIndent(paraID ParagraphID) (paragraph *Paragraph, newParent *Paragraph, err error) {
+	for _, para := range d.Body {
+		if para.ID == paraID {
+			return nil, nil, fmt.Errorf("cannot unindent top-level paragraph")
+		}
+	}
+
+	currentParent := d.GetParentOf(paraID)
+	if currentParent == nil {
+		return nil, nil, fmt.Errorf("paragraph with ID %v not found", paraID)
+	}
+
+	grandParent := d.GetParentOf(currentParent.ID)
+	var siblingsParents []*Paragraph
+	if grandParent == nil {
+		siblingsParents = d.Body
+	} else {
+		siblingsParents = grandParent.Children
+	}
+
+	currentParentIndex := -1
+	for i, para := range siblingsParents {
+		if para.ID == currentParent.ID {
+			currentParentIndex = i
+			break
+		}
+	}
+
+	if currentParentIndex == -1 {
+		return nil, nil, fmt.Errorf("current parent with ID %v not found among its siblings", currentParent.ID)
+	}
+
+	paragraph, err = currentParent.RemoveChild(paraID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if grandParent == nil {
+		d.Body = append(d.Body[:currentParentIndex+1], append([]*Paragraph{paragraph}, d.Body[currentParentIndex+1:]...)...)
+		return paragraph, nil, nil
+	}
+
+	grandParent.Children = append(grandParent.Children[:currentParentIndex+1], append([]*Paragraph{paragraph}, grandParent.Children[currentParentIndex+1:]...)...)
+	return paragraph, grandParent, nil
+}

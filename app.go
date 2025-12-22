@@ -147,6 +147,29 @@ func (a *App) Indent(docID string, paragraph *ParagraphDto) (*ParagraphDto, erro
 	return &paras[0], nil
 }
 
+func (a *App) UnIndent(docID string, paragraph *ParagraphDto) (*ParagraphDto, error) {
+	log.Printf("Indenting paragraph ID: %s in document ID: %s\n", paragraph.ID, docID)
+	uuidDocID, err := uuid.Parse(docID)
+	if err != nil {
+		return nil, err
+	}
+	domainDocID := domain.DocumentID(uuidDocID)
+
+	uuidParaID, err := uuid.Parse(paragraph.ID)
+	if err != nil {
+		return nil, err
+	}
+	domainParaID := domain.ParagraphID(uuidParaID)
+
+	domainPara, err := a.docService.UnIndent(domainDocID, domainParaID)
+	if err != nil {
+		return nil, err
+	}
+
+	paras := FromDomainParagraph(domainPara, paragraph.Indentation-1)
+	return &paras[0], nil
+}
+
 func (a *App) SaveDocument(d *DocumentDto) error {
 	//log.Printf("Saving document ID: %s, Title: %s\n", d.ID, d.Title)
 	//doc, err := ToDomain(d)

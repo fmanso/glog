@@ -58,8 +58,8 @@ func (s *DocumentService) AddNewParagraph(docID domain.DocumentID, index int) (*
 	return para, nil
 }
 
-func (s *DocumentService) Indent(docId domain.DocumentID, paraID domain.ParagraphID) (*domain.Paragraph, error) {
-	doc, err := s.store.LoadDocument(docId)
+func (s *DocumentService) Indent(docID domain.DocumentID, paraID domain.ParagraphID) (*domain.Paragraph, error) {
+	doc, err := s.store.LoadDocument(docID)
 	if err != nil {
 		return nil, err
 	}
@@ -71,6 +71,34 @@ func (s *DocumentService) Indent(docId domain.DocumentID, paraID domain.Paragrap
 
 	if parent == nil {
 		return nil, fmt.Errorf("cannot indent paragraph with ID %v", paraID)
+	}
+
+	err = s.store.ChangeParentID(paraID, &parent.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return para, nil
+}
+
+func (s *DocumentService) UnIndent(docID domain.DocumentID, paraID domain.ParagraphID) (*domain.Paragraph, error) {
+	doc, err := s.store.LoadDocument(docID)
+	if err != nil {
+		return nil, err
+	}
+
+	para, parent, err := doc.UnIndent(paraID)
+	if err != nil {
+		return nil, err
+	}
+
+	if parent == nil {
+		err = s.store.ChangeParentID(paraID, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		return para, err
 	}
 
 	err = s.store.ChangeParentID(paraID, &parent.ID)

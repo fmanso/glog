@@ -129,3 +129,31 @@ func TestIndent2(t *testing.T) {
 		t.Fatal("Expected error when indenting first child, got nil")
 	}
 }
+
+func TestUnindentRoot(t *testing.T) {
+	doc := NewDocument("test document", ToDateTime(time.Now().UTC()))
+	_ = doc.InsertParagraph(0, "First paragraph")
+	para2 := doc.InsertParagraph(1, "Second paragraph")
+
+	_, _, err := doc.UnIndent(para2.ID)
+	assert.Error(t, err)
+	if err == nil {
+		t.Fatal("Expected error when unindenting top-level paragraph, got nil")
+	}
+}
+
+func TestUnindent(t *testing.T) {
+	doc := NewDocument("test document", ToDateTime(time.Now().UTC()))
+	para1 := doc.InsertParagraph(0, "First paragraph")
+	child1 := NewParagraph("Child paragraph 1")
+	para1.AddChild(child1)
+
+	paragraph, parent, err := doc.UnIndent(child1.ID)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	assert.Equal(t, 0, len(para1.Children))
+	assert.Equal(t, 2, len(doc.Body))
+	assert.Equal(t, child1.ID, paragraph.ID)
+	assert.Nil(t, parent)
+}

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import {SetParagraphContent, AddNewParagraph, Indent} from '../../wailsjs/go/main/App';
+    import {SetParagraphContent, AddNewParagraph, Indent, UnIndent} from '../../wailsjs/go/main/App';
   import {main} from '../../wailsjs/go/models';
   import {tick} from 'svelte';
   export let document: main.DocumentDto;
@@ -24,14 +24,27 @@
             inputElements[index+1]?.focus();
         });
     } else if (event.key === 'Tab') {
-        event.preventDefault();
-        Indent(document.id, paragraph).then(async (para) => {
-           console.log('Paragraph indented in backend');
-            // Update paragraph in document
-            let index = document.body.indexOf(paragraph);
-            document.body[index] = para;
-            document = document;
-        });
+        if (!event.shiftKey) {
+            // Indent
+            event.preventDefault();
+            Indent(document.id, paragraph).then(async (para) => {
+               console.log('Paragraph indented in backend');
+                // Update paragraph in document
+                let index = document.body.indexOf(paragraph);
+                document.body[index] = para;
+                document = document;
+            });
+        } else {
+            // Outdent
+            event.preventDefault();
+            UnIndent(document.id, paragraph).then(async (para) => {
+                console.log('UnIndent indent in backend');
+                // Update paragraph in document
+                let index = document.body.indexOf(paragraph);
+                document.body[index] = para;
+                document = document;
+            })
+        }
     }
   }
 
