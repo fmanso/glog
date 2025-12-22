@@ -6,6 +6,10 @@ export function AddNewParagraph(arg1, arg2) {
   return window['go']['main']['App']['AddNewParagraph'](arg1, arg2);
 }
 
+export function Indent(arg1, arg2) {
+  return window['go']['main']['App']['Indent'](arg1, arg2);
+}
+
 export function LoadJournal(arg1) {
   return window['go']['main']['App']['LoadJournal'](arg1);
 }

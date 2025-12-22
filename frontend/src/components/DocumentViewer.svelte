@@ -1,5 +1,5 @@
 <script lang="ts">
-    import {SetParagraphContent, AddNewParagraph} from '../../wailsjs/go/main/App';
+    import {SetParagraphContent, AddNewParagraph, Indent} from '../../wailsjs/go/main/App';
   import {main} from '../../wailsjs/go/models';
   import {tick} from 'svelte';
   export let document: main.DocumentDto;
@@ -23,18 +23,15 @@
             await tick();
             inputElements[index+1]?.focus();
         });
-    } else if (event.key === 'Backspace') {
-        if (paragraph.content === '' && (!paragraph.children || paragraph.children.length == 0)) {
-            event.preventDefault();
+    } else if (event.key === 'Tab') {
+        event.preventDefault();
+        Indent(document.id, paragraph).then(async (para) => {
+           console.log('Paragraph indented in backend');
+            // Update paragraph in document
             let index = document.body.indexOf(paragraph);
-            if (index > 0) {
-                // Remove current paragraph
-                document.body.splice(index, 1);
-                document = document;
-                await tick();
-                inputElements[index - 1]?.focus();
-            }
-        }
+            document.body[index] = para;
+            document = document;
+        });
     }
   }
 
@@ -58,6 +55,7 @@
         {#each document.body as paragraph, i}
             <span>{i} - {paragraph.id}</span>
             <input type="text"
+                   style="margin-left: {paragraph.indentation * 20}px"
                    bind:this={inputElements[i]}
                    bind:value={paragraph.content}
                    on:click={() => handleClick(paragraph)}

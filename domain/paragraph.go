@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 )
 
@@ -30,11 +32,13 @@ func (p *Paragraph) AddChild(child *Paragraph) {
 	p.Children = append(p.Children, child)
 }
 
-func (p *Paragraph) RemoveChild(child *Paragraph) {
+func (p *Paragraph) RemoveChild(paraID ParagraphID) (*Paragraph, error) {
 	for i, c := range p.Children {
-		if c.ID == child.ID {
+		if c.ID == paraID {
 			p.Children = append(p.Children[:i], p.Children[i+1:]...)
-			return
+			return c, nil
 		}
 	}
+
+	return nil, fmt.Errorf("paragraph does not contain paragraph with ID %v", paraID)
 }

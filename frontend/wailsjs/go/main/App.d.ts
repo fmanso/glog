@@ -5,6 +5,8 @@ import {time} from '../models';
 
 export function AddNewParagraph(arg1:string,arg2:number):Promise<main.ParagraphDto>;
 
+export function Indent(arg1:string,arg2:main.ParagraphDto):Promise<main.ParagraphDto>;
+
 export function LoadJournal(arg1:time.Time):Promise<main.DocumentDto>;
 
 export function LoadJournalsFromTo(arg1:time.Time,arg2:time.Time):Promise<Array<main.DocumentDto>>;

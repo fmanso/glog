@@ -57,3 +57,26 @@ func (s *DocumentService) AddNewParagraph(docID domain.DocumentID, index int) (*
 
 	return para, nil
 }
+
+func (s *DocumentService) Indent(docId domain.DocumentID, paraID domain.ParagraphID) (*domain.Paragraph, error) {
+	doc, err := s.store.LoadDocument(docId)
+	if err != nil {
+		return nil, err
+	}
+
+	para, parent, err := doc.Indent(paraID)
+	if err != nil {
+		return nil, err
+	}
+
+	if parent == nil {
+		return nil, fmt.Errorf("cannot indent paragraph with ID %v", paraID)
+	}
+
+	err = s.store.ChangeParentID(paraID, &parent.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return para, nil
+}

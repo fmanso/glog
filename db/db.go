@@ -145,6 +145,41 @@ func (store *DocumentStore) SetParagraphContent(id domain.ParagraphID, content d
 	})
 }
 
+func (store *DocumentStore) ChangeParentID(id domain.ParagraphID, parent *domain.ParagraphID) error {
+	bucket := store.bucketParagraphs
+	return store.bolt.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bucket)
+		data := b.Get([]byte(id.String()))
+		if data == nil {
+			return ErrParagraphNotFound
+		}
+
+		var paraDb ParagraphDb
+		buf := bytes.NewBuffer(data)
+		dec := gob.NewDecoder(buf)
+		err := dec.Decode(&paraDb)
+		if err != nil {
+			return err
+		}
+
+		if parent != nil {
+			id := uuid.UUID(*parent)
+			paraDb.ParentID = &id
+		} else {
+			paraDb.ParentID = nil
+		}
+
+		var outBuf bytes.Buffer
+		enc := gob.NewEncoder(&outBuf)
+		err = enc.Encode(paraDb)
+		if err != nil {
+			return err
+		}
+
+		return b.Put([]byte(paraDb.ID.String()), outBuf.Bytes())
+	})
+}
+
 func (store *DocumentStore) saveParagraphs(tx *bolt.Tx, doc *domain.Document) error {
 	bucket := tx.Bucket(store.bucketParagraphs)
 
