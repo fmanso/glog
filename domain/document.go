@@ -50,13 +50,13 @@ func (d *Document) InsertParagraph(index int, content string) *Paragraph {
 func (d *Document) GetChildren(paraID ParagraphID) ([]*Paragraph, bool) {
 	for _, para := range d.Body {
 		if para.ID == paraID {
-			return d.Body, true
+			return para.Children, true
 		}
 	}
 
 	// If not found at the top level, search recursively in children
 	for _, para := range d.Body {
-		if parentPara := d.recursiveFindParent(paraID, para); parentPara != nil {
+		if parentPara := d.getChildren(paraID, para); parentPara != nil {
 			return parentPara.Children, true
 		}
 	}
@@ -64,13 +64,27 @@ func (d *Document) GetChildren(paraID ParagraphID) ([]*Paragraph, bool) {
 	return nil, false
 }
 
-func (d *Document) recursiveFindParent(paraID ParagraphID, parent *Paragraph) *Paragraph {
+func (d *Document) getChildren(paraID ParagraphID, parent *Paragraph) *Paragraph {
+	for _, child := range parent.Children {
+		if child.ID == paraID {
+			return child
+		}
+		if len(child.Children) > 0 {
+			if foundParent := d.getParent(paraID, child); foundParent != nil {
+				return foundParent
+			}
+		}
+	}
+	return nil
+}
+
+func (d *Document) getParent(paraID ParagraphID, parent *Paragraph) *Paragraph {
 	for _, child := range parent.Children {
 		if child.ID == paraID {
 			return parent
 		}
 		if len(child.Children) > 0 {
-			if foundParent := d.recursiveFindParent(paraID, child); foundParent != nil {
+			if foundParent := d.getParent(paraID, child); foundParent != nil {
 				return foundParent
 			}
 		}
@@ -87,7 +101,7 @@ func (d *Document) GetParentOf(paraID ParagraphID) *Paragraph {
 
 	// If not found at the top level, search recursively in children
 	for _, para := range d.Body {
-		if parentPara := d.recursiveFindParent(paraID, para); parentPara != nil {
+		if parentPara := d.getParent(paraID, para); parentPara != nil {
 			return parentPara
 		}
 	}
