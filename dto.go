@@ -2,6 +2,7 @@ package main
 
 import (
 	"glog/domain"
+	"log"
 )
 
 type ParagraphDto struct {
@@ -18,6 +19,7 @@ type DocumentDto struct {
 }
 
 func FromDomainParagraph(para *domain.Paragraph, indentation int) []ParagraphDto {
+	log.Printf("Converting paragraph ID: %s at indentation level: %d", para.ID.String(), indentation)
 	paragraphs := make([]ParagraphDto, 0)
 	paraDto := ParagraphDto{
 		ID:          para.ID.String(),
@@ -39,7 +41,7 @@ func FromDomain(doc *domain.Document) (*DocumentDto, error) {
 		ID:    doc.ID.String(),
 		Title: doc.Title,
 		Date:  string(doc.Date),
-		Body:  make([]ParagraphDto, len(doc.Body)),
+		Body:  make([]ParagraphDto, 0),
 	}
 
 	for _, para := range doc.Body {

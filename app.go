@@ -50,6 +50,11 @@ func (a *App) LoadJournal(date time.Time) (*DocumentDto, error) {
 			return nil, err
 		}
 
+		log.Printf("Created a new journal entry: %v\n", doc)
+		for _, para := range doc.Body {
+			log.Printf("Paragraph ID: %s, Content: %s\n", para.ID, para.Content)
+		}
+
 		docDto, err = FromDomain(doc)
 		if err != nil {
 			return nil, err
@@ -62,6 +67,10 @@ func (a *App) LoadJournal(date time.Time) (*DocumentDto, error) {
 		}
 	}
 
+	log.Printf("Journal loaded: %v\n", docDto)
+	for _, para := range docDto.Body {
+		log.Printf("Paragraph ID: %s, Content: %s, Indentation: %d\n", para.ID, para.Content, para.Indentation)
+	}
 	return docDto, nil
 }
 

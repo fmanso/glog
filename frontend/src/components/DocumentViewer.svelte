@@ -56,6 +56,7 @@
         <h1>{document.title}</h1>
         <!-- For each paragraph in document.paragraphs, render a <p> element -->
         {#each document.body as paragraph, i}
+            <span>{i} - {paragraph.id}</span>
             <input type="text"
                    bind:this={inputElements[i]}
                    bind:value={paragraph.content}

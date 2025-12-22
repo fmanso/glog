@@ -2,6 +2,7 @@ package domain
 
 import (
 	"github.com/google/uuid"
+	"github.com/labstack/gommon/log"
 )
 
 type DocumentID uuid.UUID
@@ -28,6 +29,8 @@ func NewDocument(title string, date DateTime) *Document {
 }
 
 func (d *Document) InsertParagraph(index int, content string) *Paragraph {
+	log.Debugf("Inserting paragraph at index %d with content: %s", index, content)
+	log.Debugf("Current paragraphs %v", d.Body)
 	para := NewParagraph(Content(content))
 
 	// Insert at the specified index
@@ -38,6 +41,6 @@ func (d *Document) InsertParagraph(index int, content string) *Paragraph {
 	}
 
 	d.paragraphs++
-
+	log.Debugf("Paragraphs %v", d.paragraphs)
 	return para
 }
