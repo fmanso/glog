@@ -17,25 +17,43 @@ func TestNewDocument(t *testing.T) {
 func TestInsertParagraph(t *testing.T) {
 	doc := NewDocument("test document", ToDateTime(time.Now().UTC()))
 
-	para1 := doc.InsertParagraph(0, "First paragraph")
+	para1 := doc.AddParagraph("First paragraph")
 	assert.Equal(t, 1, len(doc.Body))
 	assert.Equal(t, "First paragraph", string(doc.Body[0].Content))
 	assert.Equal(t, para1.ID, doc.Body[0].ID)
 
-	para2 := doc.InsertParagraph(1, "Second paragraph")
+	para2 := doc.AddParagraph("Second paragraph")
 	assert.Equal(t, 2, len(doc.Body))
 	assert.Equal(t, "Second paragraph", string(doc.Body[1].Content))
 	assert.Equal(t, para2.ID, doc.Body[1].ID)
 
-	para3 := doc.InsertParagraph(1, "Inserted paragraph")
+	para3 := doc.AddParagraph("Inserted paragraph")
 	assert.Equal(t, 3, len(doc.Body))
 	assert.Equal(t, "Inserted paragraph", string(doc.Body[1].Content))
 	assert.Equal(t, para3.ID, doc.Body[1].ID)
 }
 
+func TestInsertParagraphWithChildren(t *testing.T) {
+	doc := NewDocument("test document", ToDateTime(time.Now().UTC()))
+
+	para1 := doc.AddParagraph("First paragraph")
+	child1 := NewParagraph("Child paragraph 1")
+	child2 := NewParagraph("Child paragraph 2")
+
+	para1.AddChild(child1)
+	para1.AddChild(child2)
+
+	assert.Equal(t, 1, len(doc.Body))
+	assert.Equal(t, 2, len(para1.Children))
+
+	doc.InsertParagraphAfter(child2.ID, "Second paragraph")
+	assert.Equal(t, 2, len(doc.Body))
+	assert.Equal(t, "Second paragraph", string(doc.Body[1].Content))
+}
+
 func TestGetChildrenRoot(t *testing.T) {
 	doc := NewDocument("test document", ToDateTime(time.Now().UTC()))
-	para1 := doc.InsertParagraph(0, "First paragraph")
+	para1 := doc.AddParagraph("First paragraph")
 	para1.AddChild(NewParagraph("Child paragraph 1"))
 	para1.AddChild(NewParagraph("Child paragraph 2"))
 
@@ -48,7 +66,7 @@ func TestGetChildrenRoot(t *testing.T) {
 
 func TestGetChildren(t *testing.T) {
 	doc := NewDocument("test document", ToDateTime(time.Now().UTC()))
-	para1 := doc.InsertParagraph(0, "First paragraph")
+	para1 := doc.AddParagraph("First paragraph")
 	child1 := NewParagraph("Child paragraph 1")
 	para1.AddChild(child1)
 	child1.AddChild(NewParagraph("Child paragraph 2"))
@@ -61,7 +79,7 @@ func TestGetChildren(t *testing.T) {
 
 func TestGetParentRoot(t *testing.T) {
 	doc := NewDocument("test document", ToDateTime(time.Now().UTC()))
-	para1 := doc.InsertParagraph(0, "First paragraph")
+	para1 := doc.AddParagraph("First paragraph")
 
 	parent := doc.GetParentOf(para1.ID)
 	assert.Nil(t, parent)
@@ -69,7 +87,7 @@ func TestGetParentRoot(t *testing.T) {
 
 func TestGetParent(t *testing.T) {
 	doc := NewDocument("test document", ToDateTime(time.Now().UTC()))
-	para1 := doc.InsertParagraph(0, "First paragraph")
+	para1 := doc.AddParagraph("First paragraph")
 	child1 := NewParagraph("Child paragraph 1")
 	para1.AddChild(child1)
 	child2 := NewParagraph("Child paragraph 2")
@@ -85,8 +103,8 @@ func TestGetParent(t *testing.T) {
 
 func TestIndentRoot(t *testing.T) {
 	doc := NewDocument("test document", ToDateTime(time.Now().UTC()))
-	para1 := doc.InsertParagraph(0, "First paragraph")
-	para2 := doc.InsertParagraph(1, "Second paragraph")
+	para1 := doc.AddParagraph("First paragraph")
+	para2 := doc.AddParagraph("Second paragraph")
 
 	para, parent, err := doc.Indent(para2.ID)
 	assert.NoError(t, err)
@@ -99,7 +117,7 @@ func TestIndentRoot(t *testing.T) {
 
 func TestIndent(t *testing.T) {
 	doc := NewDocument("test document", ToDateTime(time.Now().UTC()))
-	para1 := doc.InsertParagraph(0, "First paragraph")
+	para1 := doc.AddParagraph("First paragraph")
 	child1 := NewParagraph("Child paragraph 1")
 	para1.AddChild(child1)
 	child2 := NewParagraph("Child paragraph 2")
@@ -117,7 +135,7 @@ func TestIndent(t *testing.T) {
 
 func TestIndent2(t *testing.T) {
 	doc := NewDocument("test document", ToDateTime(time.Now().UTC()))
-	para1 := doc.InsertParagraph(0, "First paragraph")
+	para1 := doc.AddParagraph("First paragraph")
 	child1 := NewParagraph("Child paragraph 1")
 	para1.AddChild(child1)
 	child2 := NewParagraph("Child paragraph 2")
@@ -132,8 +150,8 @@ func TestIndent2(t *testing.T) {
 
 func TestUnindentRoot(t *testing.T) {
 	doc := NewDocument("test document", ToDateTime(time.Now().UTC()))
-	_ = doc.InsertParagraph(0, "First paragraph")
-	para2 := doc.InsertParagraph(1, "Second paragraph")
+	para1 := doc.AddParagraph("First paragraph")
+	para2 := doc.InsertParagraphAfter(para1.ID, "Second paragraph")
 
 	_, _, err := doc.UnIndent(para2.ID)
 	assert.Error(t, err)
@@ -144,7 +162,7 @@ func TestUnindentRoot(t *testing.T) {
 
 func TestUnindent(t *testing.T) {
 	doc := NewDocument("test document", ToDateTime(time.Now().UTC()))
-	para1 := doc.InsertParagraph(0, "First paragraph")
+	para1 := doc.AddParagraph("First paragraph")
 	child1 := NewParagraph("Child paragraph 1")
 	para1.AddChild(child1)
 

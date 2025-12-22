@@ -2,9 +2,8 @@ package domain
 
 import (
 	"fmt"
-
 	"github.com/google/uuid"
-	"github.com/labstack/gommon/log"
+	"log"
 )
 
 type DocumentID uuid.UUID
@@ -30,21 +29,49 @@ func NewDocument(title string, date DateTime) *Document {
 	}
 }
 
-func (d *Document) InsertParagraph(index int, content string) *Paragraph {
-	log.Debugf("Inserting paragraph at index %d with content: %s", index, content)
-	log.Debugf("Current paragraphs %v", d.Body)
+func (d *Document) AddParagraph(content string) *Paragraph {
 	para := NewParagraph(Content(content))
+	d.Body = append(d.Body, para)
+	d.paragraphs++
+	return para
+}
 
-	// Insert at the specified index
-	if index < 0 || index > len(d.Body) {
-		d.Body = append(d.Body, para)
-	} else {
-		d.Body = append(d.Body[:index], append([]*Paragraph{para}, d.Body[index:]...)...)
+func (d *Document) InsertParagraphAfter(paraID ParagraphID, content string) *Paragraph {
+	log.Printf("Inserting paragraph after ID %v", paraID)
+
+	parent := d.GetParentOf(paraID)
+	if parent == nil {
+		// Get index in top-level body
+		index := -1
+		for i, para := range d.Body {
+			if para.ID == paraID {
+				index = i
+				break
+			}
+		}
+
+		para := NewParagraph(Content(content))
+		// Insert at index position + 1
+		d.Body = append(d.Body[:index+1], append([]*Paragraph{para}, d.Body[index+1:]...)...)
+		d.paragraphs++
+		return para
 	}
 
+	// Get index in parent's children
+	index := -1
+	for i, para := range parent.Children {
+		if para.ID == paraID {
+			index = i
+			break
+		}
+	}
+
+	para := NewParagraph(Content(content))
+	// Insert at index position + 1
+	parent.Children = append(parent.Children[:index+1], append([]*Paragraph{para}, parent.Children[index+1:]...)...)
 	d.paragraphs++
-	log.Debugf("Paragraphs %v", d.paragraphs)
 	return para
+
 }
 
 func (d *Document) GetChildren(paraID ParagraphID) ([]*Paragraph, bool) {
