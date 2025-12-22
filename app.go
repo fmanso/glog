@@ -98,6 +98,23 @@ func (a *App) SetParagraphContent(paraID string, content string) (string, error)
 	return content, nil
 }
 
+func (a *App) AddNewParagraph(docID string, index int) (*ParagraphDto, error) {
+	log.Printf("Adding new paragraph to document ID: %s at index: %d\n", docID, index)
+	uuidDocID, err := uuid.Parse(docID)
+	if err != nil {
+		return nil, err
+	}
+	domainDocID := domain.DocumentID(uuidDocID)
+
+	domainPara, err := a.docService.AddNewParagraph(domainDocID, index)
+	if err != nil {
+		return nil, err
+	}
+
+	paras := FromDomainParagraph(domainPara, 0)
+	return &paras[0], nil
+}
+
 func (a *App) SaveDocument(d *DocumentDto) error {
 	//log.Printf("Saving document ID: %s, Title: %s\n", d.ID, d.Title)
 	//doc, err := ToDomain(d)

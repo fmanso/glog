@@ -27,7 +27,7 @@ func NewDocument(title string, date DateTime) *Document {
 	}
 }
 
-func (d *Document) InsertParagraph(index int, content string) {
+func (d *Document) InsertParagraph(index int, content string) *Paragraph {
 	para := NewParagraph(Content(content))
 
 	// Insert at the specified index
@@ -38,4 +38,6 @@ func (d *Document) InsertParagraph(index int, content string) {
 	}
 
 	d.paragraphs++
+
+	return para
 }

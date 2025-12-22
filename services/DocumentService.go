@@ -41,3 +41,19 @@ func (s *DocumentService) SetParagraphContent(paraID domain.ParagraphID, content
 
 	return content, nil
 }
+
+func (s *DocumentService) AddNewParagraph(docID domain.DocumentID, index int) (*domain.Paragraph, error) {
+	doc, err := s.store.LoadDocument(docID)
+	if err != nil {
+		return nil, err
+	}
+
+	para := doc.InsertParagraph(index, "")
+
+	err = s.store.Save(doc)
+	if err != nil {
+		return nil, err
+	}
+
+	return para, nil
+}

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import {SaveDocument, SetParagraphContent} from '../../wailsjs/go/main/App';
+    import {SetParagraphContent, AddNewParagraph} from '../../wailsjs/go/main/App';
   import {main} from '../../wailsjs/go/models';
   import {tick} from 'svelte';
   export let document: main.DocumentDto;
@@ -15,11 +15,14 @@
     if (event.key === 'Enter') {
         event.preventDefault();
         let index = document.body.indexOf(paragraph);
-        // Add new paragraph after current
-        document.body.splice(index + 1, 0, {content: ''} as main.ParagraphDto);
-        document = document;
-        await tick();
-        inputElements[index+1]?.focus();
+        AddNewParagraph(document.id, index+1).then(async (para) => {
+            console.log('New paragraph added to backend');
+            // Add new paragraph after current
+            document.body.splice(index + 1, 0, para);
+            document = document;
+            await tick();
+            inputElements[index+1]?.focus();
+        });
     } else if (event.key === 'Backspace') {
         if (paragraph.content === '' && (!paragraph.children || paragraph.children.length == 0)) {
             event.preventDefault();
@@ -72,7 +75,7 @@
 
     input {
         background: transparent;
-        border: none;
+        border: 1px #ddd solid;
         color: inherit;
         width: 100%;
         outline: none;
