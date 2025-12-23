@@ -1,5 +1,5 @@
 <script lang="ts">
-    import {AddNewParagraph, Indent, SetParagraphContent, Outdent} from '../../wailsjs/go/main/App';
+    import {AddNewParagraph, Indent, SetParagraphContent, Outdent, DeleteParagraphAt} from '../../wailsjs/go/main/App';
     import {main} from '../../wailsjs/go/models';
     import {tick} from 'svelte';
 
@@ -15,7 +15,7 @@
         if (event.key === 'Enter') {
             event.preventDefault();
             let index = document.body.indexOf(paragraph);
-            AddNewParagraph(document.id, index+1).then(async (doc) => {
+            AddNewParagraph(document.id, index + 1).then(async (doc) => {
                 console.log('New paragraph added to backend');
                 document = doc;
                 await tick();
@@ -42,6 +42,22 @@
                     await tick();
                     inputElements[index]?.focus();
                 })
+            }
+        } else if (event.key == 'Backspace') {
+            // If cursor position at 0, delete current paragraph
+            let inputElement = event.target as HTMLInputElement;
+            if (inputElement.selectionStart === 0) {
+                let index = document.body.indexOf(paragraph);
+                if (index > 0) {
+                    event.preventDefault();
+                    let index = document.body.indexOf(paragraph);
+                    DeleteParagraphAt(document.id, index).then(async (doc) => {
+                        console.log('Paragraph deleted in backend');
+                        document = doc;
+                        await tick();
+                        inputElements[index - 1]?.focus();
+                    });
+                }
             }
         }
     }

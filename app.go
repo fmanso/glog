@@ -150,6 +150,27 @@ func (a *App) Outdent(docID string, index int) (*DocumentDto, error) {
 	return docDto, nil
 }
 
+func (a *App) DeleteParagraphAt(docID string, index int) (*DocumentDto, error) {
+	log.Printf("Deleting paragraph at index %d in document ID: %s\n", index, docID)
+	uuidDocID, err := uuid.Parse(docID)
+	if err != nil {
+		return nil, err
+	}
+	domainDocID := domain.DocumentID(uuidDocID)
+
+	domainDoc, err := a.docService.DeleteParagraph(domainDocID, index)
+	if err != nil {
+		return nil, err
+	}
+
+	docDto, err := FromDomain(domainDoc)
+	if err != nil {
+		return nil, err
+	}
+
+	return docDto, nil
+}
+
 func (a *App) SaveDocument(d *DocumentDto) error {
 	//log.Printf("Saving document ID: %s, Title: %s\n", d.ID, d.Title)
 	//doc, err := ToDomain(d)

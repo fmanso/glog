@@ -2,7 +2,6 @@ package domain
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/google/uuid"
 )
@@ -41,12 +40,28 @@ func (d *Document) InsertParagraphAt(index int, content string, indentation int)
 }
 
 func (d *Document) Indent(index int) error {
-	if index <= 0 || index >= len(d.Body) {
+	if index < 0 || index >= len(d.Body) {
 		return fmt.Errorf("index out of range")
 	}
 
-	para := d.Body[index]
-	para.Indentation += 1
+	if index == 0 {
+		return fmt.Errorf("cannot indent the first paragraph further")
+	}
+
+	prev := d.Body[index-1]
+	if d.Body[index].Indentation >= prev.Indentation+1 {
+		return fmt.Errorf("cannot indent paragraph ID: %s beyond the indentation level of the previous paragraph ID: %s", d.Body[index].ID.String(), prev.ID.String())
+	}
+
+	originIndentation := d.Body[index].Indentation
+	d.Body[index].Indentation += 1
+
+	for i := index + 1; i < len(d.Body); i++ {
+		if d.Body[i].Indentation <= originIndentation {
+			break
+		}
+		d.Body[i].Indentation += 1
+	}
 
 	return nil
 }
@@ -56,12 +71,37 @@ func (d *Document) Outdent(index int) error {
 		return fmt.Errorf("index out of range")
 	}
 
-	para := d.Body[index]
-	if para.Indentation > 0 {
-		para.Indentation -= 1
-	} else {
-		log.Printf("Paragraph ID: %s is already at indentation level 0", para.ID.String())
+	if d.Body[index].Indentation == 0 {
+		return fmt.Errorf("paragraph ID: %s is already at the base indentation level", d.Body[index].ID.String())
 	}
 
+	originIndentation := d.Body[index].Indentation
+	d.Body[index].Indentation -= 1
+
+	for i := index + 1; i < len(d.Body); i++ {
+		if d.Body[i].Indentation <= originIndentation {
+			break
+		}
+
+		d.Body[i].Indentation -= 1
+	}
+
+	return nil
+}
+
+func (d *Document) DeleteParagraphAt(index int) error {
+	if index < 0 || index >= len(d.Body) {
+		return fmt.Errorf("index out of range")
+	}
+
+	if index == 0 {
+		return fmt.Errorf("cannot delete the first paragraph")
+	}
+
+	// Append current text to the previous paragraph
+	prevPara := d.Body[index-1]
+	currPara := d.Body[index]
+	prevPara.Content += "" + currPara.Content
+	d.Body = append(d.Body[:index], d.Body[index+1:]...)
 	return nil
 }

@@ -97,3 +97,22 @@ func (s *DocumentService) Outdent(docID domain.DocumentID, index int) (*domain.D
 
 	return doc, nil
 }
+
+func (s *DocumentService) DeleteParagraph(docID domain.DocumentID, index int) (*domain.Document, error) {
+	doc, err := s.store.LoadDocument(docID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = doc.DeleteParagraphAt(index)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.store.Save(doc)
+	if err != nil {
+		return nil, err
+	}
+
+	return doc, nil
+}
