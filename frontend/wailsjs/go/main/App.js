@@ -14,12 +14,12 @@ export function LoadJournal(arg1) {
   return window['go']['main']['App']['LoadJournal'](arg1);
 }
 
-export function LoadJournalsFromTo(arg1, arg2) {
-  return window['go']['main']['App']['LoadJournalsFromTo'](arg1, arg2);
-}
-
 export function LoadTodayDocument() {
   return window['go']['main']['App']['LoadTodayDocument']();
+}
+
+export function Outdent(arg1, arg2) {
+  return window['go']['main']['App']['Outdent'](arg1, arg2);
 }
 
 export function SaveDocument(arg1) {
@@ -28,8 +28,4 @@ export function SaveDocument(arg1) {
 
 export function SetParagraphContent(arg1, arg2) {
   return window['go']['main']['App']['SetParagraphContent'](arg1, arg2);
-}
-
-export function UnIndent(arg1, arg2) {
-  return window['go']['main']['App']['UnIndent'](arg1, arg2);
 }

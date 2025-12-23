@@ -3,18 +3,16 @@
 import {main} from '../models';
 import {time} from '../models';
 
-export function AddNewParagraph(arg1:string,arg2:string):Promise<main.DocumentDto>;
+export function AddNewParagraph(arg1:string,arg2:number):Promise<main.DocumentDto>;
 
-export function Indent(arg1:string,arg2:main.ParagraphDto):Promise<main.DocumentDto>;
+export function Indent(arg1:string,arg2:number):Promise<main.DocumentDto>;
 
 export function LoadJournal(arg1:time.Time):Promise<main.DocumentDto>;
 
-export function LoadJournalsFromTo(arg1:time.Time,arg2:time.Time):Promise<Array<main.DocumentDto>>;
-
 export function LoadTodayDocument():Promise<main.DocumentDto>;
+
+export function Outdent(arg1:string,arg2:number):Promise<main.DocumentDto>;
 
 export function SaveDocument(arg1:main.DocumentDto):Promise<void>;
 
 export function SetParagraphContent(arg1:string,arg2:string):Promise<string>;
-
-export function UnIndent(arg1:string,arg2:main.ParagraphDto):Promise<main.DocumentDto>;

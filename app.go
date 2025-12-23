@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"glog/db"
 	"glog/domain"
 	"glog/services"
@@ -74,23 +73,6 @@ func (a *App) LoadJournal(date time.Time) (*DocumentDto, error) {
 	return docDto, nil
 }
 
-func (a *App) LoadJournalsFromTo(from time.Time, to time.Time) ([]*DocumentDto, error) {
-	fmt.Printf("Loading journals from %v to %v\n", from, to)
-	fromTruncate := from.Truncate(24 * time.Hour)
-	toTruncate := to.Truncate(24 * time.Hour)
-	docs := make([]*DocumentDto, 0)
-	current := fromTruncate
-	for !current.Before(toTruncate) {
-		doc, err := a.LoadJournal(current)
-		if err != nil {
-			return nil, err
-		}
-		current = current.Add(-24 * time.Hour)
-		docs = append(docs, doc)
-	}
-	return docs, nil
-}
-
 func (a *App) SetParagraphContent(paraID string, content string) (string, error) {
 	log.Printf("Setting content for paragraph ID: %s\n", paraID)
 	uuidParaID, err := uuid.Parse(paraID)
@@ -107,21 +89,15 @@ func (a *App) SetParagraphContent(paraID string, content string) (string, error)
 	return content, nil
 }
 
-func (a *App) AddNewParagraph(docID string, paraID string) (*DocumentDto, error) {
-	log.Printf("Adding new paragraph after paragraph ID: %s in document ID: %s\n", paraID, docID)
+func (a *App) AddNewParagraph(docID string, index int) (*DocumentDto, error) {
+	log.Printf("Adding new paragraph at index %d in document ID: %s\n", index, docID)
 	uuidDocID, err := uuid.Parse(docID)
 	if err != nil {
 		return nil, err
 	}
 	domainDocID := domain.DocumentID(uuidDocID)
 
-	uuidParaID, err := uuid.Parse(paraID)
-	if err != nil {
-		return nil, err
-	}
-	domainParaID := domain.ParagraphID(uuidParaID)
-
-	doc, err := a.docService.AddNewParagraph(domainDocID, domainParaID)
+	doc, err := a.docService.InsertNewParagraphAt(domainDocID, index)
 	if err != nil {
 		return nil, err
 	}
@@ -133,21 +109,15 @@ func (a *App) AddNewParagraph(docID string, paraID string) (*DocumentDto, error)
 	return docDto, nil
 }
 
-func (a *App) Indent(docID string, paragraph *ParagraphDto) (*DocumentDto, error) {
-	log.Printf("Indenting paragraph ID: %s in document ID: %s\n", paragraph.ID, docID)
+func (a *App) Indent(docID string, index int) (*DocumentDto, error) {
+	log.Printf("Indenting paragraph at index %d in document ID: %s\n", index, docID)
 	uuidDocID, err := uuid.Parse(docID)
 	if err != nil {
 		return nil, err
 	}
 	domainDocID := domain.DocumentID(uuidDocID)
 
-	uuidParaID, err := uuid.Parse(paragraph.ID)
-	if err != nil {
-		return nil, err
-	}
-	domainParaID := domain.ParagraphID(uuidParaID)
-
-	domainDoc, err := a.docService.Indent(domainDocID, domainParaID)
+	domainDoc, err := a.docService.Indent(domainDocID, index)
 	if err != nil {
 		return nil, err
 	}
@@ -159,21 +129,15 @@ func (a *App) Indent(docID string, paragraph *ParagraphDto) (*DocumentDto, error
 	return docDto, nil
 }
 
-func (a *App) UnIndent(docID string, paragraph *ParagraphDto) (*DocumentDto, error) {
-	log.Printf("Indenting paragraph ID: %s in document ID: %s\n", paragraph.ID, docID)
+func (a *App) Outdent(docID string, index int) (*DocumentDto, error) {
+	log.Printf("Unindenting paragraph at index %d in document ID: %s\n", index, docID)
 	uuidDocID, err := uuid.Parse(docID)
 	if err != nil {
 		return nil, err
 	}
 	domainDocID := domain.DocumentID(uuidDocID)
 
-	uuidParaID, err := uuid.Parse(paragraph.ID)
-	if err != nil {
-		return nil, err
-	}
-	domainParaID := domain.ParagraphID(uuidParaID)
-
-	domainDoc, err := a.docService.UnIndent(domainDocID, domainParaID)
+	domainDoc, err := a.docService.Outdent(domainDocID, index)
 	if err != nil {
 		return nil, err
 	}

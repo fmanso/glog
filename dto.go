@@ -18,22 +18,14 @@ type DocumentDto struct {
 	Body  []ParagraphDto `json:"body"`
 }
 
-func FromDomainParagraph(para *domain.Paragraph, indentation int) []ParagraphDto {
-	log.Printf("Converting paragraph ID: %s at indentation level: %d", para.ID.String(), indentation)
-	paragraphs := make([]ParagraphDto, 0)
+func FromDomainParagraph(para *domain.Paragraph) ParagraphDto {
+	log.Println("Converting paragraph ID:", para.ID.String())
 	paraDto := ParagraphDto{
 		ID:          para.ID.String(),
 		Content:     string(para.Content),
-		Indentation: indentation,
+		Indentation: para.Indentation,
 	}
-	paragraphs = append(paragraphs, paraDto)
-
-	for _, child := range para.Children {
-		childParagraphs := FromDomainParagraph(child, indentation+1)
-		paragraphs = append(paragraphs, childParagraphs...)
-	}
-
-	return paragraphs
+	return paraDto
 }
 
 func FromDomain(doc *domain.Document) (*DocumentDto, error) {
@@ -41,12 +33,12 @@ func FromDomain(doc *domain.Document) (*DocumentDto, error) {
 		ID:    doc.ID.String(),
 		Title: doc.Title,
 		Date:  string(doc.Date),
-		Body:  make([]ParagraphDto, 0),
+		Body:  make([]ParagraphDto, len(doc.Body)),
 	}
 
-	for _, para := range doc.Body {
-		paraDto := FromDomainParagraph(para, 0)
-		docDto.Body = append(docDto.Body, paraDto...)
+	for i, para := range doc.Body {
+		paraDto := FromDomainParagraph(para)
+		docDto.Body[i] = paraDto
 	}
 
 	return docDto, nil

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import {AddNewParagraph, Indent, SetParagraphContent, UnIndent} from '../../wailsjs/go/main/App';
+    import {AddNewParagraph, Indent, SetParagraphContent, Outdent} from '../../wailsjs/go/main/App';
     import {main} from '../../wailsjs/go/models';
     import {tick} from 'svelte';
 
@@ -9,14 +9,13 @@
     let inputElements: HTMLInputElement[] = [];
 
     function handleClick(paragraph: main.ParagraphDto) {
-
     }
 
     async function handleKeyDown(event: KeyboardEvent, paragraph: main.ParagraphDto) {
         if (event.key === 'Enter') {
             event.preventDefault();
             let index = document.body.indexOf(paragraph);
-            AddNewParagraph(document.id, paragraph.id).then(async (doc) => {
+            AddNewParagraph(document.id, index+1).then(async (doc) => {
                 console.log('New paragraph added to backend');
                 document = doc;
                 await tick();
@@ -27,7 +26,7 @@
                 // Indent
                 event.preventDefault();
                 let index = document.body.indexOf(paragraph);
-                Indent(document.id, paragraph).then(async (doc) => {
+                Indent(document.id, index).then(async (doc) => {
                     console.log('Paragraph indented in backend2');
                     document = doc;
                     await tick();
@@ -37,7 +36,7 @@
                 // Outdent
                 event.preventDefault();
                 let index = document.body.indexOf(paragraph);
-                UnIndent(document.id, paragraph).then(async (paras) => {
+                Outdent(document.id, index).then(async (doc) => {
                     console.log('UnIndent indent in backend2');
                     document = doc;
                     await tick();
@@ -54,7 +53,7 @@
             SetParagraphContent(paragraph.id, paragraph.content).then(() => {
                 console.log('Paragraph content saved');
             });
-        }, 300);
+        }, 10);
     }
 </script>
 

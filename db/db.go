@@ -74,10 +74,10 @@ type DocDb struct {
 }
 
 type ParagraphDb struct {
-	ID         uuid.UUID
-	DocumentID uuid.UUID
-	Content    string
-	ParentID   *uuid.UUID
+	ID          uuid.UUID
+	DocumentID  uuid.UUID
+	Content     string
+	Indentation int
 }
 
 func (store *DocumentStore) saveDoc(tx *bolt.Tx, doc *domain.Document) error {
@@ -88,20 +88,12 @@ func (store *DocumentStore) saveDoc(tx *bolt.Tx, doc *domain.Document) error {
 		ID:    uuid.UUID(doc.ID),
 		Title: doc.Title,
 		Date:  string(doc.Date),
-		Body:  make([]uuid.UUID, 0),
+		Body:  make([]uuid.UUID, len(doc.Body)),
 	}
 
-	// Add paragraph IDs to docDb.Body. IDs from all paragraphs at any level are included.
-	var addParagraphIDs func(paragraphs []*domain.Paragraph)
-	addParagraphIDs = func(paragraphs []*domain.Paragraph) {
-		for _, para := range paragraphs {
-			docDb.Body = append(docDb.Body, uuid.UUID(para.ID))
-			if len(para.Children) > 0 {
-				addParagraphIDs(para.Children)
-			}
-		}
+	for i, para := range doc.Body {
+		docDb.Body[i] = uuid.UUID(para.ID)
 	}
-	addParagraphIDs(doc.Body)
 
 	// Serialize DocDb
 	var buf bytes.Buffer
@@ -145,81 +137,33 @@ func (store *DocumentStore) SetParagraphContent(id domain.ParagraphID, content d
 	})
 }
 
-func (store *DocumentStore) ChangeParentID(id domain.ParagraphID, parent *domain.ParagraphID) error {
-	bucket := store.bucketParagraphs
-	return store.bolt.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket(bucket)
-		data := b.Get([]byte(id.String()))
-		if data == nil {
-			return ErrParagraphNotFound
-		}
-
-		var paraDb ParagraphDb
-		buf := bytes.NewBuffer(data)
-		dec := gob.NewDecoder(buf)
-		err := dec.Decode(&paraDb)
-		if err != nil {
-			return err
-		}
-
-		if parent != nil {
-			id := uuid.UUID(*parent)
-			paraDb.ParentID = &id
-		} else {
-			paraDb.ParentID = nil
-		}
-
-		var outBuf bytes.Buffer
-		enc := gob.NewEncoder(&outBuf)
-		err = enc.Encode(paraDb)
-		if err != nil {
-			return err
-		}
-
-		return b.Put([]byte(paraDb.ID.String()), outBuf.Bytes())
-	})
-}
-
 func (store *DocumentStore) saveParagraphs(tx *bolt.Tx, doc *domain.Document) error {
 	bucket := tx.Bucket(store.bucketParagraphs)
 
-	// Create and save ParagraphDb for each paragraph
-	var saveParagraphs func(paragraphs []*domain.Paragraph, parentID *uuid.UUID) error
-	saveParagraphs = func(paragraphs []*domain.Paragraph, parentID *uuid.UUID) error {
-		for _, para := range paragraphs {
-			paraDb := ParagraphDb{
-				ID:         uuid.UUID(para.ID),
-				DocumentID: uuid.UUID(doc.ID),
-				Content:    string(para.Content),
-				ParentID:   parentID,
-			}
-
-			// Serialize ParagraphDb
-			var paraBuf bytes.Buffer
-			paraEnc := gob.NewEncoder(&paraBuf)
-			err := paraEnc.Encode(paraDb)
-			if err != nil {
-				return err
-			}
-
-			// Save to BoltDB
-			err = bucket.Put([]byte(paraDb.ID.String()), paraBuf.Bytes())
-			if err != nil {
-				return err
-			}
-
-			// Recursively save child paragraphs
-			if len(para.Children) > 0 {
-				err = saveParagraphs(para.Children, &paraDb.ID)
-				if err != nil {
-					return err
-				}
-			}
+	for _, para := range doc.Body {
+		paraDb := ParagraphDb{
+			ID:          uuid.UUID(para.ID),
+			DocumentID:  uuid.UUID(doc.ID),
+			Content:     string(para.Content),
+			Indentation: para.Indentation,
 		}
-		return nil
+
+		// Serialize ParagraphDb
+		var paraBuf bytes.Buffer
+		paraEnc := gob.NewEncoder(&paraBuf)
+		err := paraEnc.Encode(paraDb)
+		if err != nil {
+			return err
+		}
+
+		// Save to BoltDB
+		err = bucket.Put([]byte(paraDb.ID.String()), paraBuf.Bytes())
+		if err != nil {
+			return err
+		}
 	}
 
-	return saveParagraphs(doc.Body, nil)
+	return nil
 }
 
 func (store *DocumentStore) Save(doc *domain.Document) error {
@@ -267,12 +211,7 @@ func (store *DocumentStore) LoadDocument(id domain.DocumentID) (*domain.Document
 		doc.Date = domain.DateTime(docDb.Date)
 		doc.Body = make([]*domain.Paragraph, 0)
 
-		// Load paragraphs, in DocDb.Body we have all paragraph IDs (at any level)
-		// But in domain.Document.Body we only want the top-level paragraphs
 		bucket = tx.Bucket(store.bucketParagraphs)
-		paraMap := make(map[uuid.UUID]*domain.Paragraph)
-
-		// First load all paragraphs into paraMap
 		for _, paraID := range docDb.Body {
 			data := bucket.Get([]byte(paraID.String()))
 			if data == nil {
@@ -288,34 +227,11 @@ func (store *DocumentStore) LoadDocument(id domain.DocumentID) (*domain.Document
 			}
 
 			para := &domain.Paragraph{
-				ID:       domain.ParagraphID(paraDb.ID),
-				Content:  domain.Content(paraDb.Content),
-				Children: make([]*domain.Paragraph, 0),
+				ID:          domain.ParagraphID(paraDb.ID),
+				Content:     domain.Content(paraDb.Content),
+				Indentation: paraDb.Indentation,
 			}
-			paraMap[paraDb.ID] = para
-		}
-
-		// Now build the hierarchy and identify top-level paragraphs
-		for _, paraID := range docDb.Body {
-			paraDb := paraMap[paraID]
-			data := bucket.Get([]byte(paraID.String()))
-			var paraData ParagraphDb
-			buf := bytes.NewBuffer(data)
-			dec := gob.NewDecoder(buf)
-			err := dec.Decode(&paraData)
-			if err != nil {
-				return err
-			}
-
-			if paraData.ParentID != nil {
-				parentPara, exists := paraMap[*paraData.ParentID]
-				if exists {
-					parentPara.Children = append(parentPara.Children, paraDb)
-				}
-			} else {
-				// Top-level paragraph
-				doc.Body = append(doc.Body, paraDb)
-			}
+			doc.Body = append(doc.Body, para)
 		}
 
 		return nil
