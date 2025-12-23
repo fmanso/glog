@@ -89,7 +89,7 @@ func (a *App) SetParagraphContent(paraID string, content string) (string, error)
 	return content, nil
 }
 
-func (a *App) AddNewParagraph(docID string, index int) (*DocumentDto, error) {
+func (a *App) AddNewParagraph(docID string, content string, index int) (*DocumentDto, error) {
 	log.Printf("Adding new paragraph at index %d in document ID: %s\n", index, docID)
 	uuidDocID, err := uuid.Parse(docID)
 	if err != nil {
@@ -97,7 +97,7 @@ func (a *App) AddNewParagraph(docID string, index int) (*DocumentDto, error) {
 	}
 	domainDocID := domain.DocumentID(uuidDocID)
 
-	doc, err := a.docService.InsertNewParagraphAt(domainDocID, index)
+	doc, err := a.docService.InsertNewParagraphAt(domainDocID, content, index)
 	if err != nil {
 		return nil, err
 	}

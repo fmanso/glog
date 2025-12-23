@@ -2,6 +2,7 @@
     import {AddNewParagraph, Indent, SetParagraphContent, Outdent, DeleteParagraphAt} from '../../wailsjs/go/main/App';
     import {main} from '../../wailsjs/go/models';
     import {tick} from 'svelte';
+    import {text} from "svelte/internal";
 
     export let document: main.DocumentDto;
 
@@ -15,11 +16,21 @@
         if (event.key === 'Enter') {
             event.preventDefault();
             let index = document.body.indexOf(paragraph);
-            AddNewParagraph(document.id, index + 1).then(async (doc) => {
+            // Select the text of the current paragraph after the current cursor position
+            let inputElement = event.target as HTMLInputElement;
+            let textBeforeCursor = inputElement.value.substring(0, inputElement.selectionStart ?? 0);
+            let textAfterCursor = inputElement.value.substring(inputElement.selectionStart ?? 0);
+            AddNewParagraph(document.id, textAfterCursor, index + 1).then(async (doc) => {
                 console.log('New paragraph added to backend');
                 document = doc;
                 await tick();
                 inputElements[index + 1]?.focus();
+                // Put cursor at start
+                inputElements[index+1]?.setSelectionRange(0, 0);
+                SetParagraphContent(paragraph.id, textBeforeCursor).then(() => {
+                    console.log('Paragraph content updated after split');
+                    inputElement.value = textBeforeCursor;
+                });
             });
         } else if (event.key === 'Tab') {
             if (!event.shiftKey) {
@@ -44,18 +55,29 @@
                 })
             }
         } else if (event.key == 'Backspace') {
-            // If cursor position at 0, delete current paragraph
+            // If cursor position at 0, delete current paragraph (backend will append its content to previous paragraph)
             let inputElement = event.target as HTMLInputElement;
             if (inputElement.selectionStart === 0) {
                 let index = document.body.indexOf(paragraph);
                 if (index > 0) {
                     event.preventDefault();
-                    let index = document.body.indexOf(paragraph);
+
+                    // Snapshot where the caret should land in the previous paragraph:
+                    // right after its original content (before merge/appending happens).
+                    const prevContentLen = document.body[index - 1]?.content?.length ?? 0;
+
                     DeleteParagraphAt(document.id, index).then(async (doc) => {
                         console.log('Paragraph deleted in backend');
                         document = doc;
                         await tick();
-                        inputElements[index - 1]?.focus();
+
+                        const prevInput = inputElements[index - 1];
+                        if (prevInput) {
+                            prevInput.focus();
+                            // Clamp in case backend changed the previous content unexpectedly.
+                            const clamped = Math.min(prevContentLen, prevInput.value?.length ?? 0);
+                            prevInput.setSelectionRange(clamped, clamped);
+                        }
                     });
                 }
             }

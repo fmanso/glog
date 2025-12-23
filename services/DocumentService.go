@@ -44,13 +44,13 @@ func (s *DocumentService) SetParagraphContent(paraID domain.ParagraphID, content
 	return content, nil
 }
 
-func (s *DocumentService) InsertNewParagraphAt(docID domain.DocumentID, index int) (*domain.Document, error) {
+func (s *DocumentService) InsertNewParagraphAt(docID domain.DocumentID, content string, index int) (*domain.Document, error) {
 	doc, err := s.store.LoadDocument(docID)
 	if err != nil {
 		return nil, err
 	}
 
-	_ = doc.InsertParagraphAt(index, "", 0)
+	_ = doc.InsertParagraphAt(index, content, 0)
 
 	err = s.store.Save(doc)
 	if err != nil {

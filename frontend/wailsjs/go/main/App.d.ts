@@ -3,7 +3,7 @@
 import {main} from '../models';
 import {time} from '../models';
 
-export function AddNewParagraph(arg1:string,arg2:number):Promise<main.DocumentDto>;
+export function AddNewParagraph(arg1:string,arg2:string,arg3:number):Promise<main.DocumentDto>;
 
 export function DeleteParagraphAt(arg1:string,arg2:number):Promise<main.DocumentDto>;
 
