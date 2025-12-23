@@ -3,7 +3,7 @@
 import {main} from '../models';
 import {time} from '../models';
 
-export function AddNewParagraph(arg1:string,arg2:number):Promise<main.ParagraphDto>;
+export function AddNewParagraph(arg1:string,arg2:string,arg3:number):Promise<main.ParagraphDto>;
 
 export function Indent(arg1:string,arg2:main.ParagraphDto):Promise<main.ParagraphDto>;
 

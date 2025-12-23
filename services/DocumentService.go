@@ -23,7 +23,7 @@ func (s *DocumentService) CreateSampleDocumentForToday() (*domain.Document, erro
 		fmt.Sprintf("%s, %s", t.Format("Monday"), t.Format("02/01/2006")),
 		domain.ToDateTime(time.Now().UTC().Truncate(24*time.Hour)),
 	)
-	doc.InsertParagraph(0, "Start your journal entry here...")
+	doc.AddParagraph("Start your journal entry here...")
 
 	err := s.store.Save(doc)
 	if err != nil {
@@ -42,13 +42,13 @@ func (s *DocumentService) SetParagraphContent(paraID domain.ParagraphID, content
 	return content, nil
 }
 
-func (s *DocumentService) AddNewParagraph(docID domain.DocumentID, index int) (*domain.Paragraph, error) {
+func (s *DocumentService) AddNewParagraph(docID domain.DocumentID, paraID domain.ParagraphID) (*domain.Paragraph, error) {
 	doc, err := s.store.LoadDocument(docID)
 	if err != nil {
 		return nil, err
 	}
 
-	para := doc.InsertParagraph(index, "")
+	para := doc.InsertParagraphAfter(paraID, "")
 
 	err = s.store.Save(doc)
 	if err != nil {

@@ -47,8 +47,9 @@ func TestInsertParagraphWithChildren(t *testing.T) {
 	assert.Equal(t, 2, len(para1.Children))
 
 	doc.InsertParagraphAfter(child2.ID, "Second paragraph")
-	assert.Equal(t, 2, len(doc.Body))
-	assert.Equal(t, "Second paragraph", string(doc.Body[1].Content))
+	assert.Equal(t, 1, len(doc.Body))
+	assert.Equal(t, 3, len(para1.Children))
+	assert.Equal(t, "Second paragraph", string(para1.Children[2].Content))
 }
 
 func TestGetChildrenRoot(t *testing.T) {

@@ -15,7 +15,7 @@
     if (event.key === 'Enter') {
         event.preventDefault();
         let index = document.body.indexOf(paragraph);
-        AddNewParagraph(document.id, index+1).then(async (para) => {
+        AddNewParagraph(document.id, paragraph.id, paragraph.indentation).then(async (para) => {
             console.log('New paragraph added to backend');
             // Add new paragraph after current
             document.body.splice(index + 1, 0, para);
