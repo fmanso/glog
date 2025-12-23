@@ -2,7 +2,6 @@
     import {AddNewParagraph, Indent, SetParagraphContent, Outdent, DeleteParagraphAt} from '../../wailsjs/go/main/App';
     import {main} from '../../wailsjs/go/models';
     import {tick} from 'svelte';
-    import {text} from "svelte/internal";
 
     export let document: main.DocumentDto;
 
