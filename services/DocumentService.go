@@ -42,29 +42,29 @@ func (s *DocumentService) SetParagraphContent(paraID domain.ParagraphID, content
 	return content, nil
 }
 
-func (s *DocumentService) AddNewParagraph(docID domain.DocumentID, paraID domain.ParagraphID) (*domain.Paragraph, error) {
+func (s *DocumentService) AddNewParagraph(docID domain.DocumentID, paraID domain.ParagraphID) (*domain.Document, error) {
 	doc, err := s.store.LoadDocument(docID)
 	if err != nil {
 		return nil, err
 	}
 
-	para := doc.InsertParagraphAfter(paraID, "")
+	_ = doc.InsertParagraphAfter(paraID, "")
 
 	err = s.store.Save(doc)
 	if err != nil {
 		return nil, err
 	}
 
-	return para, nil
+	return doc, nil
 }
 
-func (s *DocumentService) Indent(docID domain.DocumentID, paraID domain.ParagraphID) (*domain.Paragraph, error) {
+func (s *DocumentService) Indent(docID domain.DocumentID, paraID domain.ParagraphID) (*domain.Document, error) {
 	doc, err := s.store.LoadDocument(docID)
 	if err != nil {
 		return nil, err
 	}
 
-	para, parent, err := doc.Indent(paraID)
+	_, parent, err := doc.Indent(paraID)
 	if err != nil {
 		return nil, err
 	}
@@ -78,16 +78,16 @@ func (s *DocumentService) Indent(docID domain.DocumentID, paraID domain.Paragrap
 		return nil, err
 	}
 
-	return para, nil
+	return doc, nil
 }
 
-func (s *DocumentService) UnIndent(docID domain.DocumentID, paraID domain.ParagraphID) (*domain.Paragraph, error) {
+func (s *DocumentService) UnIndent(docID domain.DocumentID, paraID domain.ParagraphID) (*domain.Document, error) {
 	doc, err := s.store.LoadDocument(docID)
 	if err != nil {
 		return nil, err
 	}
 
-	para, parent, err := doc.UnIndent(paraID)
+	_, parent, err := doc.UnIndent(paraID)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func (s *DocumentService) UnIndent(docID domain.DocumentID, paraID domain.Paragr
 			return nil, err
 		}
 
-		return para, err
+		return doc, err
 	}
 
 	err = s.store.ChangeParentID(paraID, &parent.ID)
@@ -106,5 +106,5 @@ func (s *DocumentService) UnIndent(docID domain.DocumentID, paraID domain.Paragr
 		return nil, err
 	}
 
-	return para, nil
+	return doc, nil
 }

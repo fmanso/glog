@@ -107,7 +107,7 @@ func (a *App) SetParagraphContent(paraID string, content string) (string, error)
 	return content, nil
 }
 
-func (a *App) AddNewParagraph(docID string, paraID string, indentation int) (*ParagraphDto, error) {
+func (a *App) AddNewParagraph(docID string, paraID string) (*DocumentDto, error) {
 	log.Printf("Adding new paragraph after paragraph ID: %s in document ID: %s\n", paraID, docID)
 	uuidDocID, err := uuid.Parse(docID)
 	if err != nil {
@@ -121,16 +121,19 @@ func (a *App) AddNewParagraph(docID string, paraID string, indentation int) (*Pa
 	}
 	domainParaID := domain.ParagraphID(uuidParaID)
 
-	domainPara, err := a.docService.AddNewParagraph(domainDocID, domainParaID)
+	doc, err := a.docService.AddNewParagraph(domainDocID, domainParaID)
+	if err != nil {
+		return nil, err
+	}
+	docDto, err := FromDomain(doc)
 	if err != nil {
 		return nil, err
 	}
 
-	paras := FromDomainParagraph(domainPara, indentation)
-	return &paras[0], nil
+	return docDto, nil
 }
 
-func (a *App) Indent(docID string, paragraph *ParagraphDto) ([]ParagraphDto, error) {
+func (a *App) Indent(docID string, paragraph *ParagraphDto) (*DocumentDto, error) {
 	log.Printf("Indenting paragraph ID: %s in document ID: %s\n", paragraph.ID, docID)
 	uuidDocID, err := uuid.Parse(docID)
 	if err != nil {
@@ -144,16 +147,19 @@ func (a *App) Indent(docID string, paragraph *ParagraphDto) ([]ParagraphDto, err
 	}
 	domainParaID := domain.ParagraphID(uuidParaID)
 
-	domainPara, err := a.docService.Indent(domainDocID, domainParaID)
+	domainDoc, err := a.docService.Indent(domainDocID, domainParaID)
+	if err != nil {
+		return nil, err
+	}
+	docDto, err := FromDomain(domainDoc)
 	if err != nil {
 		return nil, err
 	}
 
-	paras := FromDomainParagraph(domainPara, paragraph.Indentation+1)
-	return paras, nil
+	return docDto, nil
 }
 
-func (a *App) UnIndent(docID string, paragraph *ParagraphDto) ([]ParagraphDto, error) {
+func (a *App) UnIndent(docID string, paragraph *ParagraphDto) (*DocumentDto, error) {
 	log.Printf("Indenting paragraph ID: %s in document ID: %s\n", paragraph.ID, docID)
 	uuidDocID, err := uuid.Parse(docID)
 	if err != nil {
@@ -167,13 +173,17 @@ func (a *App) UnIndent(docID string, paragraph *ParagraphDto) ([]ParagraphDto, e
 	}
 	domainParaID := domain.ParagraphID(uuidParaID)
 
-	domainPara, err := a.docService.UnIndent(domainDocID, domainParaID)
+	domainDoc, err := a.docService.UnIndent(domainDocID, domainParaID)
 	if err != nil {
 		return nil, err
 	}
 
-	paras := FromDomainParagraph(domainPara, paragraph.Indentation-1)
-	return paras, nil
+	docDto, err := FromDomain(domainDoc)
+	if err != nil {
+		return nil, err
+	}
+
+	return docDto, nil
 }
 
 func (a *App) SaveDocument(d *DocumentDto) error {

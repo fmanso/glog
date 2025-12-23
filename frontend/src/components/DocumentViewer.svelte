@@ -16,11 +16,9 @@
         if (event.key === 'Enter') {
             event.preventDefault();
             let index = document.body.indexOf(paragraph);
-            AddNewParagraph(document.id, paragraph.id, paragraph.indentation).then(async (para) => {
+            AddNewParagraph(document.id, paragraph.id).then(async (doc) => {
                 console.log('New paragraph added to backend');
-                // Add new paragraph after current
-                document.body.splice(index + 1, 0, para);
-                document = document;
+                document = doc;
                 await tick();
                 inputElements[index + 1]?.focus();
             });
@@ -28,28 +26,22 @@
             if (!event.shiftKey) {
                 // Indent
                 event.preventDefault();
-                Indent(document.id, paragraph).then(async (paras) => {
+                let index = document.body.indexOf(paragraph);
+                Indent(document.id, paragraph).then(async (doc) => {
                     console.log('Paragraph indented in backend2');
-                    console.log(paras);
-                    // Update paragraph in document
-                    for (let para of paras) {
-                        let index = document.body.findIndex(p => p.id === para.id);
-                        document.body[index] = para;
-                    }
-                    document = document;
+                    document = doc;
+                    await tick();
+                    inputElements[index]?.focus();
                 });
             } else {
                 // Outdent
                 event.preventDefault();
+                let index = document.body.indexOf(paragraph);
                 UnIndent(document.id, paragraph).then(async (paras) => {
                     console.log('UnIndent indent in backend2');
-                    console.log(paras);
-                    // Update paragraph in document
-                    for (let para of paras) {
-                        let index = document.body.findIndex(p => p.id === para.id);
-                        document.body[index] = para;
-                    }
-                    document = document;
+                    document = doc;
+                    await tick();
+                    inputElements[index]?.focus();
                 })
             }
         }

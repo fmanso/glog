@@ -2,8 +2,9 @@ package domain
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"log"
+
+	"github.com/google/uuid"
 )
 
 type DocumentID uuid.UUID
@@ -38,6 +39,20 @@ func (d *Document) AddParagraph(content string) *Paragraph {
 
 func (d *Document) InsertParagraphAfter(paraID ParagraphID, content string) *Paragraph {
 	log.Printf("Inserting paragraph after ID %v", paraID)
+
+	currentParagraph, found := d.GetParagraphByID(paraID)
+	if !found {
+		log.Printf("Paragraph with ID %v not found", paraID)
+		return nil
+	}
+
+	if len(currentParagraph.Children) > 0 {
+		log.Printf("Paragraph with ID %v has children, inserting as first child", paraID)
+		para := NewParagraph(Content(content))
+		currentParagraph.Children = append([]*Paragraph{para}, currentParagraph.Children...)
+		d.paragraphs++
+		return currentParagraph
+	}
 
 	parent := d.GetParentOf(paraID)
 	if parent == nil {
