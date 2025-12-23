@@ -130,7 +130,7 @@ func (a *App) AddNewParagraph(docID string, paraID string, indentation int) (*Pa
 	return &paras[0], nil
 }
 
-func (a *App) Indent(docID string, paragraph *ParagraphDto) (*ParagraphDto, error) {
+func (a *App) Indent(docID string, paragraph *ParagraphDto) ([]ParagraphDto, error) {
 	log.Printf("Indenting paragraph ID: %s in document ID: %s\n", paragraph.ID, docID)
 	uuidDocID, err := uuid.Parse(docID)
 	if err != nil {
@@ -150,10 +150,10 @@ func (a *App) Indent(docID string, paragraph *ParagraphDto) (*ParagraphDto, erro
 	}
 
 	paras := FromDomainParagraph(domainPara, paragraph.Indentation+1)
-	return &paras[0], nil
+	return paras, nil
 }
 
-func (a *App) UnIndent(docID string, paragraph *ParagraphDto) (*ParagraphDto, error) {
+func (a *App) UnIndent(docID string, paragraph *ParagraphDto) ([]ParagraphDto, error) {
 	log.Printf("Indenting paragraph ID: %s in document ID: %s\n", paragraph.ID, docID)
 	uuidDocID, err := uuid.Parse(docID)
 	if err != nil {
@@ -173,7 +173,7 @@ func (a *App) UnIndent(docID string, paragraph *ParagraphDto) (*ParagraphDto, er
 	}
 
 	paras := FromDomainParagraph(domainPara, paragraph.Indentation-1)
-	return &paras[0], nil
+	return paras, nil
 }
 
 func (a *App) SaveDocument(d *DocumentDto) error {

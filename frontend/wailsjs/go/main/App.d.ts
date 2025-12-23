@@ -5,7 +5,7 @@ import {time} from '../models';
 
 export function AddNewParagraph(arg1:string,arg2:string,arg3:number):Promise<main.ParagraphDto>;
 
-export function Indent(arg1:string,arg2:main.ParagraphDto):Promise<main.ParagraphDto>;
+export function Indent(arg1:string,arg2:main.ParagraphDto):Promise<Array<main.ParagraphDto>>;
 
 export function LoadJournal(arg1:time.Time):Promise<main.DocumentDto>;
 
@@ -17,4 +17,4 @@ export function SaveDocument(arg1:main.DocumentDto):Promise<void>;
 
 export function SetParagraphContent(arg1:string,arg2:string):Promise<string>;
 
-export function UnIndent(arg1:string,arg2:main.ParagraphDto):Promise<main.ParagraphDto>;
+export function UnIndent(arg1:string,arg2:main.ParagraphDto):Promise<Array<main.ParagraphDto>>;

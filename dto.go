@@ -8,7 +8,7 @@ import (
 type ParagraphDto struct {
 	ID          string `json:"id"`
 	Content     string `json:"content"`
-	Indentation int    `json:"indentation,omitempty"`
+	Indentation int    `json:"indentation"`
 }
 
 type DocumentDto struct {

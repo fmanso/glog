@@ -1,62 +1,69 @@
 <script lang="ts">
-    import {SetParagraphContent, AddNewParagraph, Indent, UnIndent} from '../../wailsjs/go/main/App';
-  import {main} from '../../wailsjs/go/models';
-  import {tick} from 'svelte';
-  export let document: main.DocumentDto;
+    import {AddNewParagraph, Indent, SetParagraphContent, UnIndent} from '../../wailsjs/go/main/App';
+    import {main} from '../../wailsjs/go/models';
+    import {tick} from 'svelte';
 
-  let debounceTimer: any;
-  let inputElements: HTMLInputElement[] = [];
+    export let document: main.DocumentDto;
 
-  function handleClick(paragraph: main.ParagraphDto) {
+    let debounceTimer: any;
+    let inputElements: HTMLInputElement[] = [];
 
-  }
+    function handleClick(paragraph: main.ParagraphDto) {
 
-  async function handleKeyDown(event: KeyboardEvent, paragraph: main.ParagraphDto) {
-    if (event.key === 'Enter') {
-        event.preventDefault();
-        let index = document.body.indexOf(paragraph);
-        AddNewParagraph(document.id, paragraph.id, paragraph.indentation).then(async (para) => {
-            console.log('New paragraph added to backend');
-            // Add new paragraph after current
-            document.body.splice(index + 1, 0, para);
-            document = document;
-            await tick();
-            inputElements[index+1]?.focus();
-        });
-    } else if (event.key === 'Tab') {
-        if (!event.shiftKey) {
-            // Indent
+    }
+
+    async function handleKeyDown(event: KeyboardEvent, paragraph: main.ParagraphDto) {
+        if (event.key === 'Enter') {
             event.preventDefault();
-            Indent(document.id, paragraph).then(async (para) => {
-               console.log('Paragraph indented in backend');
-                // Update paragraph in document
-                let index = document.body.indexOf(paragraph);
-                document.body[index] = para;
+            let index = document.body.indexOf(paragraph);
+            AddNewParagraph(document.id, paragraph.id, paragraph.indentation).then(async (para) => {
+                console.log('New paragraph added to backend');
+                // Add new paragraph after current
+                document.body.splice(index + 1, 0, para);
                 document = document;
+                await tick();
+                inputElements[index + 1]?.focus();
             });
-        } else {
-            // Outdent
-            event.preventDefault();
-            UnIndent(document.id, paragraph).then(async (para) => {
-                console.log('UnIndent indent in backend');
-                // Update paragraph in document
-                let index = document.body.indexOf(paragraph);
-                document.body[index] = para;
-                document = document;
-            })
+        } else if (event.key === 'Tab') {
+            if (!event.shiftKey) {
+                // Indent
+                event.preventDefault();
+                Indent(document.id, paragraph).then(async (paras) => {
+                    console.log('Paragraph indented in backend2');
+                    console.log(paras);
+                    // Update paragraph in document
+                    for (let para of paras) {
+                        let index = document.body.findIndex(p => p.id === para.id);
+                        document.body[index] = para;
+                    }
+                    document = document;
+                });
+            } else {
+                // Outdent
+                event.preventDefault();
+                UnIndent(document.id, paragraph).then(async (paras) => {
+                    console.log('UnIndent indent in backend2');
+                    console.log(paras);
+                    // Update paragraph in document
+                    for (let para of paras) {
+                        let index = document.body.findIndex(p => p.id === para.id);
+                        document.body[index] = para;
+                    }
+                    document = document;
+                })
+            }
         }
     }
-  }
 
-  function handleInput(event: Event, paragraph: main.ParagraphDto) {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-      console.log('User stopped typing');
-      SetParagraphContent(paragraph.id, paragraph.content).then(() => {
-          console.log('Paragraph content saved');
-      });
-    }, 300);
-  }
+    function handleInput(event: Event, paragraph: main.ParagraphDto) {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            console.log('User stopped typing');
+            SetParagraphContent(paragraph.id, paragraph.content).then(() => {
+                console.log('Paragraph content saved');
+            });
+        }, 300);
+    }
 </script>
 
 <main>

@@ -3,7 +3,7 @@ export namespace main {
 	export class ParagraphDto {
 	    id: string;
 	    content: string;
-	    indentation?: number;
+	    indentation: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new ParagraphDto(source);

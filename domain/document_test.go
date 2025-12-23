@@ -29,8 +29,8 @@ func TestInsertParagraph(t *testing.T) {
 
 	para3 := doc.AddParagraph("Inserted paragraph")
 	assert.Equal(t, 3, len(doc.Body))
-	assert.Equal(t, "Inserted paragraph", string(doc.Body[1].Content))
-	assert.Equal(t, para3.ID, doc.Body[1].ID)
+	assert.Equal(t, "Inserted paragraph", string(doc.Body[2].Content))
+	assert.Equal(t, para3.ID, doc.Body[2].ID)
 }
 
 func TestInsertParagraphWithChildren(t *testing.T) {

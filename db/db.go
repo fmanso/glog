@@ -81,7 +81,7 @@ type ParagraphDb struct {
 }
 
 func (store *DocumentStore) saveDoc(tx *bolt.Tx, doc *domain.Document) error {
-	log.Debug("Saving document: %v", doc)
+	log.Printf("Saving document: %v\n", doc)
 
 	// Create DocDb from domain.Document
 	docDb := DocDb{
