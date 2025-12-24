@@ -204,3 +204,28 @@ func (a *App) NewDocument(title string) (*DocumentDto, error) {
 
 	return docDto, nil
 }
+
+func (a *App) GetReferences(docID string) ([]*DocumentDto, error) {
+	log.Printf("Getting references for document ID: %s\n", docID)
+	uuidDocID, err := uuid.Parse(docID)
+	if err != nil {
+		return nil, err
+	}
+	domainDocID := domain.DocumentID(uuidDocID)
+
+	docs, err := a.docService.GetDocumentsReferencing(domainDocID)
+	if err != nil {
+		return nil, err
+	}
+
+	var docDtos []*DocumentDto
+	for _, doc := range docs {
+		docDto, err := FromDomain(doc)
+		if err != nil {
+			return nil, err
+		}
+		docDtos = append(docDtos, docDto)
+	}
+
+	return docDtos, nil
+}

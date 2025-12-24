@@ -1,5 +1,5 @@
 <script lang="ts">
-    import {AddNewParagraph, Indent, SetParagraphContent, Outdent, DeleteParagraphAt} from '../../wailsjs/go/main/App';
+    import {AddNewParagraph, Indent, SetParagraphContent, Outdent, DeleteParagraphAt, GetReferences} from '../../wailsjs/go/main/App';
     import {main} from '../../wailsjs/go/models';
     import {tick} from 'svelte';
 
@@ -92,6 +92,18 @@
             });
         }, 10);
     }
+
+    let references: main.DocumentDto[];
+
+    $: if (document) {
+        onDocumentChanged()
+    }
+
+    function onDocumentChanged() {
+        GetReferences(document.id).then((docs) => {
+            references = docs;
+        });
+    }
 </script>
 
 <main>
@@ -99,6 +111,7 @@
         <h1>Loading...</h1>
     {:else}
         <h1>{document.title}</h1>
+        <h2>{document.id}</h2>
         <!-- For each paragraph in document.paragraphs, render a <p> element -->
         {#each document.body as paragraph, i}
             <span>{i} - {paragraph.id}</span>
@@ -110,6 +123,16 @@
                    on:keydown={(e) => handleKeyDown(e, paragraph)}
                    on:input={(e) => handleInput(e, paragraph)}/>
         {/each}
+        <h2>References</h2>
+        {#if references && references.length > 0}
+            <ul>
+                {#each references as ref}
+                    <li>{ref.title} (ID: {ref.id})</li>
+                {/each}
+            </ul>
+        {:else}
+            <p>No references found.</p>
+        {/if}
     {/if}
 </main>
 
