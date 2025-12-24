@@ -3,6 +3,7 @@ package db
 import (
 	"encoding/gob"
 	"errors"
+	"fmt"
 	"glog/domain"
 	"os"
 	"testing"
@@ -62,5 +63,52 @@ func TestSaveAndLoad(t *testing.T) {
 	_, err = store.GetDocumentFor(date)
 	if err != nil {
 		t.Fatalf("Failed to load document: %v", err)
+	}
+}
+
+func TestDbHandleReferences(t *testing.T) {
+	store, err := NewDocumentStore("./testreferences.db")
+	if err != nil {
+		t.Fatalf("Failed to create DocumentStore: %v", err)
+	}
+
+	defer func() {
+		defer store.Close()
+		defer os.Remove("./testreferences.db")
+	}()
+
+	docId := uuid.New()
+	doc := &domain.Document{
+		ID:    domain.DocumentID(docId),
+		Title: "Test Document",
+		Date:  domain.ToDateTime(time.Now().Truncate(24 * time.Hour)),
+		Body:  []*domain.Paragraph{},
+	}
+	_ = store.Save(doc)
+
+	refDoc := &domain.Document{
+		ID:    domain.DocumentID(docId),
+		Title: "Referencing Document",
+		Date:  domain.ToDateTime(time.Now().UTC()),
+		Body:  []*domain.Paragraph{},
+	}
+
+	_ = refDoc.InsertParagraphAt(0, "", 0)
+
+	_ = store.Save(refDoc)
+
+	para := refDoc.Body[0]
+	err = store.SetParagraphContent(para.ID, domain.Content(fmt.Sprintf("This is a reference to [[%s:%s]].", docId.String(), "Test Document")))
+	if err != nil {
+		t.Fatalf("Failed to set paragraph content: %v", err)
+	}
+
+	references, err := store.GetReferences(domain.DocumentID(docId))
+	if err != nil {
+		t.Fatalf("Failed to get references: %v", err)
+	}
+
+	if len(references) != 1 {
+		t.Fatalf("Expected 1 reference, got %d", len(references))
 	}
 }

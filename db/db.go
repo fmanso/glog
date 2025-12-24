@@ -290,6 +290,7 @@ func (store *DocumentStore) GetDocumentFor(time time.Time) (*domain.Document, er
 }
 
 func (store *DocumentStore) GetReferences(docID domain.DocumentID) ([]domain.DocumentID, error) {
+	log.Printf("Getting references for document ID: %s\n", docID.String())
 	idMap := map[domain.DocumentID]struct{}{}
 	err := store.bolt.View(func(tx *bolt.Tx) error {
 		paragraphIds, err := store.referenceHandler.getParagraphIds(tx, uuid.UUID(docID))
@@ -307,7 +308,7 @@ func (store *DocumentStore) GetReferences(docID domain.DocumentID) ([]domain.Doc
 		}
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, err
 	}
@@ -317,6 +318,7 @@ func (store *DocumentStore) GetReferences(docID domain.DocumentID) ([]domain.Doc
 		ids = append(ids, id)
 	}
 
+	log.Printf("Got %d references for document ID: %s\n", len(ids), docID.String())
 	return ids, err
 }
 

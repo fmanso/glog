@@ -43,7 +43,10 @@ func (s *DocumentService) NewDocument(title string) (*domain.Document, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	err = s.store.Save(doc)
+	if err != nil {
+		return nil, err
+	}
 	return doc, nil
 }
 

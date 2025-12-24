@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"glog/domain"
+	"log"
 	"regexp"
 
 	"github.com/boltdb/bolt"
@@ -56,6 +57,8 @@ func (r *referencesDb) handleReferences(tx *bolt.Tx, paragraph *ParagraphDb) err
 		}
 
 		docReferences[paragraph.ID] = struct{}{}
+		log.Println("Storing reference from paragraph", paragraph.ID.String(), "to document", docId.String())
+
 		var outBuf bytes.Buffer
 		enc := gob.NewEncoder(&outBuf)
 		err := enc.Encode(docReferences)
