@@ -88,3 +88,29 @@ func getReferences(text string) []domain.DocumentID {
 	}
 	return references
 }
+
+func (r *referencesDb) getParagraphIds(tx *bolt.Tx, docID uuid.UUID) ([]uuid.UUID, error) {
+	bucket := tx.Bucket(r.bucketReferences)
+	docKey := []byte(docID.String())
+	data := bucket.Get(docKey)
+	if data == nil {
+		return []uuid.UUID{}, nil
+	}
+
+	var docReferences map[uuid.UUID]struct{}
+	buf := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(buf)
+	err := dec.Decode(&docReferences)
+	if err != nil {
+		return nil, err
+	}
+
+	references := make([]uuid.UUID, len(docReferences))
+	i := 0
+	for paraID := range docReferences {
+		references[i] = paraID
+		i++
+	}
+
+	return references, nil
+}

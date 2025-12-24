@@ -1,8 +1,6 @@
 package db
 
 import (
-	"bytes"
-	"encoding/gob"
 	"fmt"
 	"os"
 	"testing"
@@ -55,31 +53,22 @@ func TestHandleReferences(t *testing.T) {
 	}
 
 	err = db.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket(referencesDb.bucketReferences)
-		docKey := []byte(uuid.MustParse("123e4567-e89b-12d3-a456-426614174000").String())
-		data := bucket.Get(docKey)
-		if data == nil {
-			t.Fatalf("No references found for document ID")
-		}
-
-		var docReferences map[uuid.UUID]struct{}
-		buf := bytes.NewBuffer(data)
-		dec := gob.NewDecoder(buf)
-		err = dec.Decode(&docReferences)
+		ids, err := referencesDb.getParagraphIds(tx, uuid.MustParse("123e4567-e89b-12d3-a456-426614174000"))
 		if err != nil {
-			t.Fatalf("Failed to decode references: %v", err)
+			return fmt.Errorf("failed to get paragraph IDs: %v", err)
 		}
 
-		if _, exists := docReferences[paragraph.ID]; !exists {
-			t.Fatalf("Paragraph ID 1 not found in references")
+		if ids[0] != paragraph.ID {
+			t.Fatalf("Expected paragraph ID %s, got %s", paragraph.ID, ids[0])
 		}
 
-		if _, exists := docReferences[paragraph2.ID]; !exists {
-			t.Fatalf("Paragraph ID 2 not found in references")
+		if ids[1] != paragraph2.ID {
+			t.Fatalf("Expected paragraph ID %s, got %s", paragraph2.ID, ids[1])
 		}
 
 		return nil
 	})
+	
 	if err != nil {
 		t.Fatalf("Failed to verify references in DB: %v", err)
 	}
