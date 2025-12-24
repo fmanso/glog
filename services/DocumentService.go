@@ -36,6 +36,17 @@ func (s *DocumentService) CreateSampleDocumentForToday() (*domain.Document, erro
 	return doc, nil
 }
 
+func (s *DocumentService) NewDocument(title string) (*domain.Document, error) {
+	t := domain.ToDateTime(time.Now().UTC())
+	doc := domain.NewDocument(title, t)
+	err := doc.InsertParagraphAt(0, "", 0)
+	if err != nil {
+		return nil, err
+	}
+
+	return doc, nil
+}
+
 func (s *DocumentService) SetParagraphContent(paraID domain.ParagraphID, content string) (string, error) {
 	err := s.store.SetParagraphContent(paraID, domain.Content(content))
 	if err != nil {

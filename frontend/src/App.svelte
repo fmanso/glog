@@ -1,6 +1,6 @@
 <script lang="ts">
   import DocumentViewer from './components/DocumentViewer.svelte';
-  import { LoadJournal } from "../wailsjs/go/main/App";
+  import { LoadJournal, NewDocument } from "../wailsjs/go/main/App";
   import { main } from "../wailsjs/go/models";
   import Dialog from './Dialog.svelte';
 
@@ -43,6 +43,12 @@
   let dialog: HTMLDivElement | null = null;
   function createNewPage(name: string) {
     console.log("Creating new page..." + name);
+    dialog.close();
+    NewDocument(name).then((doc) => {
+        console.log("New document created:");
+        console.log(doc);
+        document = doc;
+    })
   }
 </script>
 

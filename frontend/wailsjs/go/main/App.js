@@ -22,6 +22,10 @@ export function LoadTodayDocument() {
   return window['go']['main']['App']['LoadTodayDocument']();
 }
 
+export function NewDocument(arg1) {
+  return window['go']['main']['App']['NewDocument'](arg1);
+}
+
 export function Outdent(arg1, arg2) {
   return window['go']['main']['App']['Outdent'](arg1, arg2);
 }

@@ -1,7 +1,5 @@
 <script lang="ts">
     import { createEventDispatcher} from "svelte";
-
-
     export let dialog: HTMLDialogElement;
     const dispatch = createEventDispatcher<{ create: {name: string}; cancel: void}>();
     let pageName = '';

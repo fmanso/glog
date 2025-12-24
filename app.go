@@ -189,3 +189,18 @@ func (a *App) SaveDocument(d *DocumentDto) error {
 func (a *App) LoadTodayDocument() (*DocumentDto, error) {
 	return a.LoadJournal(time.Now().UTC())
 }
+
+func (a *App) NewDocument(title string) (*DocumentDto, error) {
+	log.Printf("Creating new document with title: %s\n", title)
+	doc, err := a.docService.NewDocument(title)
+	if err != nil {
+		return nil, err
+	}
+
+	docDto, err := FromDomain(doc)
+	if err != nil {
+		return nil, err
+	}
+
+	return docDto, nil
+}

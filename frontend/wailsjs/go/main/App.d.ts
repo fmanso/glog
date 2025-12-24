@@ -13,6 +13,8 @@ export function LoadJournal(arg1:time.Time):Promise<main.DocumentDto>;
 
 export function LoadTodayDocument():Promise<main.DocumentDto>;
 
+export function NewDocument(arg1:string):Promise<main.DocumentDto>;
+
 export function Outdent(arg1:string,arg2:number):Promise<main.DocumentDto>;
 
 export function SaveDocument(arg1:main.DocumentDto):Promise<void>;
