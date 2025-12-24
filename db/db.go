@@ -20,6 +20,7 @@ type DocumentStore struct {
 	bucketParagraphs []byte
 	bucketTimeIndex  []byte
 	bucketTermsIndex []byte
+	referenceHandler *referencesDb
 }
 
 func NewDocumentStore(path string) (*DocumentStore, error) {
@@ -52,6 +53,12 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 		return nil, err
 	}
 
+	referenceHandler, err := newReferencesDb(db)
+	if err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+
 	return &DocumentStore{
 		bolt:             db,
 		path:             path,
@@ -59,6 +66,7 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 		bucketParagraphs: []byte("paragraphs"),
 		bucketTimeIndex:  []byte("time_index"),
 		bucketTermsIndex: []byte("terms_index"),
+		referenceHandler: referenceHandler,
 	}, nil
 }
 
@@ -133,7 +141,17 @@ func (store *DocumentStore) SetParagraphContent(id domain.ParagraphID, content d
 			return err
 		}
 
-		return b.Put([]byte(paraDb.ID.String()), outBuf.Bytes())
+		err = b.Put([]byte(paraDb.ID.String()), outBuf.Bytes())
+		if err != nil {
+			return err
+		}
+
+		err = store.referenceHandler.handleReferences(tx, &paraDb)
+		if err != nil {
+			return err
+		}
+
+		return nil
 	})
 }
 

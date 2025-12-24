@@ -3,7 +3,7 @@ package db
 import (
 	"bytes"
 	"encoding/gob"
-	"glog/domain"
+	"fmt"
 	"os"
 	"testing"
 
@@ -26,24 +26,32 @@ func TestHandleReferences(t *testing.T) {
 		t.Fatalf("Failed to create referencesDb: %v", err)
 	}
 
-	paragraph := &domain.Paragraph{
-		ID:      domain.ParagraphID(uuid.New()),
-		Content: domain.Content("This is a reference to [[123e4567-e89b-12d3-a456-426614174000:Sample Document]]."),
+	paragraph := &ParagraphDb{
+		ID:      uuid.New(),
+		Content: "This is a reference to [[123e4567-e89b-12d3-a456-426614174000:Sample Document]].",
 	}
 
-	paragraph2 := &domain.Paragraph{
-		ID:      domain.ParagraphID(uuid.New()),
-		Content: domain.Content("This is a reference to [[123e4567-e89b-12d3-a456-426614174000:Sample Document]]."),
+	paragraph2 := &ParagraphDb{
+		ID:      uuid.New(),
+		Content: "This is a reference to [[123e4567-e89b-12d3-a456-426614174000:Sample Document]].",
 	}
 
-	err = referencesDb.handleReferences(paragraph)
+	err = db.Update(func(tx *bolt.Tx) error {
+		err = referencesDb.handleReferences(tx, paragraph)
+		if err != nil {
+			return fmt.Errorf("failed to handle references for paragraph 1: %v", err)
+		}
+
+		err = referencesDb.handleReferences(tx, paragraph2)
+		if err != nil {
+			return fmt.Errorf("failed to handle references for paragraph 2: %v", err)
+		}
+
+		return nil
+	})
+
 	if err != nil {
-		t.Fatalf("Failed to handle references: %v", err)
-	}
-
-	err = referencesDb.handleReferences(paragraph2)
-	if err != nil {
-		t.Fatalf("Failed to handle references for second paragraph: %v", err)
+		t.Fatalf("Failed to update DB with references: %v", err)
 	}
 
 	err = db.View(func(tx *bolt.Tx) error {
@@ -54,7 +62,7 @@ func TestHandleReferences(t *testing.T) {
 			t.Fatalf("No references found for document ID")
 		}
 
-		var docReferences map[domain.ParagraphID]struct{}
+		var docReferences map[uuid.UUID]struct{}
 		buf := bytes.NewBuffer(data)
 		dec := gob.NewDecoder(buf)
 		err = dec.Decode(&docReferences)
