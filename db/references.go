@@ -80,9 +80,10 @@ func (r *referencesDb) handleReferences(tx *bolt.Tx, paragraph *ParagraphDb) err
 
 }
 
+var referenceRegexp = regexp.MustCompile(`\[\[([^:]+):([^\]]+)\]\]`)
+
 func getReferences(text string) []domain.DocumentID {
-	re := regexp.MustCompile(`\[\[([^:]+):([^\]]+)\]\]`)
-	matches := re.FindAllStringSubmatch(text, -1)
+	matches := referenceRegexp.FindAllStringSubmatch(text, -1)
 
 	var references []domain.DocumentID
 	for _, match := range matches {
