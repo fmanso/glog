@@ -94,13 +94,19 @@
     }
 
     let references: main.DocumentDto[];
+    let currentReferencesDocumentId: any;
 
     $: if (document) {
-        onDocumentChanged()
+        onDocumentChanged();
     }
 
     function onDocumentChanged() {
-        GetReferences(document.id).then((docs) => {
+        const docId = document.id;
+        currentReferencesDocumentId = docId;
+        GetReferences(docId).then((docs) => {
+            if (currentReferencesDocumentId !== docId) {
+                return;
+            }
             references = docs;
         });
     }
