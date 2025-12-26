@@ -319,7 +319,7 @@ func (store *DocumentStore) GetReferences(docID domain.DocumentID) ([]domain.Doc
 	}
 
 	log.Printf("Got %d references for document ID: %s\n", len(ids), docID.String())
-	return ids, err
+	return ids, nil
 }
 
 func (store *DocumentStore) getParagraph(tx *bolt.Tx, id uuid.UUID) (*ParagraphDb, error) {
