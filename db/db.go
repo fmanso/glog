@@ -303,8 +303,8 @@ func (store *DocumentStore) GetReferences(docID domain.DocumentID) ([]domain.Doc
 			if err != nil {
 				return err
 			}
-			docID := domain.DocumentID(paraDb.DocumentID)
-			idMap[docID] = struct{}{}
+			refDocID := domain.DocumentID(paraDb.DocumentID)
+			idMap[refDocID] = struct{}{}
 		}
 		return nil
 	})
