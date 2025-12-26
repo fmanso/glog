@@ -86,8 +86,9 @@ func TestDbHandleReferences(t *testing.T) {
 	}
 	_ = store.Save(doc)
 
+	refDocId := uuid.New()
 	refDoc := &domain.Document{
-		ID:    domain.DocumentID(docId),
+		ID:    domain.DocumentID(refDocId),
 		Title: "Referencing Document",
 		Date:  domain.ToDateTime(time.Now().UTC()),
 		Body:  []*domain.Paragraph{},
