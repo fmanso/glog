@@ -20,6 +20,7 @@ type DocumentStore struct {
 	bucketParagraphs []byte
 	bucketTimeIndex  []byte
 	bucketTermsIndex []byte
+	referenceHandler *referencesDb
 }
 
 func NewDocumentStore(path string) (*DocumentStore, error) {
@@ -52,6 +53,12 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 		return nil, err
 	}
 
+	referenceHandler, err := newReferencesDb(db)
+	if err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+
 	return &DocumentStore{
 		bolt:             db,
 		path:             path,
@@ -59,6 +66,7 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 		bucketParagraphs: []byte("paragraphs"),
 		bucketTimeIndex:  []byte("time_index"),
 		bucketTermsIndex: []byte("terms_index"),
+		referenceHandler: referenceHandler,
 	}, nil
 }
 
@@ -133,7 +141,17 @@ func (store *DocumentStore) SetParagraphContent(id domain.ParagraphID, content d
 			return err
 		}
 
-		return b.Put([]byte(paraDb.ID.String()), outBuf.Bytes())
+		err = b.Put([]byte(paraDb.ID.String()), outBuf.Bytes())
+		if err != nil {
+			return err
+		}
+
+		err = store.referenceHandler.handleReferences(tx, &paraDb)
+		if err != nil {
+			return err
+		}
+
+		return nil
 	})
 }
 
@@ -213,19 +231,10 @@ func (store *DocumentStore) LoadDocument(id domain.DocumentID) (*domain.Document
 
 		bucket = tx.Bucket(store.bucketParagraphs)
 		for _, paraID := range docDb.Body {
-			data := bucket.Get([]byte(paraID.String()))
-			if data == nil {
-				return ErrParagraphNotFound
-			}
-
-			var paraDb ParagraphDb
-			buf := bytes.NewBuffer(data)
-			dec := gob.NewDecoder(buf)
-			err := dec.Decode(&paraDb)
+			paraDb, err := store.getParagraph(tx, paraID)
 			if err != nil {
 				return err
 			}
-
 			para := &domain.Paragraph{
 				ID:          domain.ParagraphID(paraDb.ID),
 				Content:     domain.Content(paraDb.Content),
@@ -278,6 +287,55 @@ func (store *DocumentStore) GetDocumentFor(time time.Time) (*domain.Document, er
 	}
 
 	return nil, ErrDocumentNotFound
+}
+
+func (store *DocumentStore) GetReferences(docID domain.DocumentID) ([]domain.DocumentID, error) {
+	log.Printf("Getting references for document ID: %s\n", docID.String())
+	idMap := map[domain.DocumentID]struct{}{}
+	err := store.bolt.View(func(tx *bolt.Tx) error {
+		paragraphIds, err := store.referenceHandler.getParagraphIds(tx, uuid.UUID(docID))
+		if err != nil {
+			return err
+		}
+
+		for _, paraID := range paragraphIds {
+			paraDb, err := store.getParagraph(tx, paraID)
+			if err != nil {
+				return err
+			}
+			refDocID := domain.DocumentID(paraDb.DocumentID)
+			idMap[refDocID] = struct{}{}
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	ids := make([]domain.DocumentID, 0, len(idMap))
+	for id := range idMap {
+		ids = append(ids, id)
+	}
+
+	log.Printf("Got %d references for document ID: %s\n", len(ids), docID.String())
+	return ids, nil
+}
+
+func (store *DocumentStore) getParagraph(tx *bolt.Tx, id uuid.UUID) (*ParagraphDb, error) {
+	bucket := tx.Bucket(store.bucketParagraphs)
+	data := bucket.Get([]byte(id.String()))
+	if data == nil {
+		return nil, ErrParagraphNotFound
+	}
+	var paraDb ParagraphDb
+	buf := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(buf)
+	err := dec.Decode(&paraDb)
+	if err != nil {
+		return nil, err
+	}
+	return &paraDb, nil
 }
 
 //func (store *DocumentStore) indexTerms(tx *bolt.Tx, doc *domain.Document, paragraphs []domain.Paragraph) error {

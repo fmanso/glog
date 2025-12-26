@@ -7,6 +7,8 @@ export function AddNewParagraph(arg1:string,arg2:string,arg3:number):Promise<mai
 
 export function DeleteParagraphAt(arg1:string,arg2:number):Promise<main.DocumentDto>;
 
+export function GetReferences(arg1:string):Promise<Array<main.DocumentDto>>;
+
 export function Indent(arg1:string,arg2:number):Promise<main.DocumentDto>;
 
 export function LoadJournal(arg1:time.Time):Promise<main.DocumentDto>;

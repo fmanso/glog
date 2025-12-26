@@ -43,7 +43,10 @@ func (s *DocumentService) NewDocument(title string) (*domain.Document, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	err = s.store.Save(doc)
+	if err != nil {
+		return nil, err
+	}
 	return doc, nil
 }
 
@@ -126,4 +129,20 @@ func (s *DocumentService) DeleteParagraph(docID domain.DocumentID, index int) (*
 	}
 
 	return doc, nil
+}
+
+func (s *DocumentService) GetDocumentsReferencing(docID domain.DocumentID) ([]*domain.Document, error) {
+	docIds, err := s.store.GetReferences(docID)
+	if err != nil {
+		return nil, err
+	}
+	docs := make([]*domain.Document, len(docIds))
+	for i, id := range docIds {
+		doc, err := s.store.LoadDocument(id)
+		if err != nil {
+			return nil, err
+		}
+		docs[i] = doc
+	}
+	return docs, nil
 }

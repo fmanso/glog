@@ -10,6 +10,10 @@ export function DeleteParagraphAt(arg1, arg2) {
   return window['go']['main']['App']['DeleteParagraphAt'](arg1, arg2);
 }
 
+export function GetReferences(arg1) {
+  return window['go']['main']['App']['GetReferences'](arg1);
+}
+
 export function Indent(arg1, arg2) {
   return window['go']['main']['App']['Indent'](arg1, arg2);
 }
