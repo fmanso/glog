@@ -34,9 +34,14 @@ func newReferencesDb(boltDb *bolt.DB) (*referencesDb, error) {
 }
 
 func (r *referencesDb) handleReferences(tx *bolt.Tx, paragraph *ParagraphDb) error {
-	// A reference is a markup in the content with this format: [[document_id:title]]
-	// This function will parse the content and extract the references
-	// and store them in the references bucket
+	// A reference is a markup in the content with this format: [[document_id:title]].
+	// This function parses the paragraph content, extracts all referenced document IDs,
+	// and stores them in the "references" bucket. For each referenced document ID, the
+	// bucket key is the document ID (as a string) and the value is a gob-encoded
+	// map[uuid.UUID]struct{} that acts as a set of paragraph IDs referencing that document.
+	// Note: this function only adds/updates entries for the current paragraph; it does not
+	// remove references for paragraphs that have been deleted or whose content no longer
+	// contains a given reference, so stale references may remain unless cleaned up elsewhere.
 
 	// Search using regexp
 	docIds := getReferences(paragraph.Content)
