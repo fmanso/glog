@@ -27,6 +27,36 @@
             changes: { from: selection.to, to: state.doc.length, insert: "" }
         });
         view.dispatch(transaction);
+
+        block.content = view.state.doc.toString();
+    }
+
+    export function getSelectedContent() {
+        const state = view.state;
+        const selection = state.selection.main;
+        return state.doc.sliceString(selection.from, selection.to);
+    }
+
+    export function getCaretPosition() {
+        const state = view.state;
+        const selection = state.selection.main;
+        return selection.from;
+    }
+
+    export function setCaretPosition(position: number) {
+        const state = view.state;
+        const transaction = state.update({
+            selection: { anchor: position }
+        });
+        view.dispatch(transaction);
+    }
+
+    export function setDocString(newContent: string) {
+        const state = view.state;
+        const transaction = state.update({
+            changes: { from: 0, to: state.doc.length, insert: newContent }
+        });
+        view.dispatch(transaction);
     }
 
     onMount(() => {
@@ -37,7 +67,8 @@
                 keymap.of([
                     {key: "Tab", run: () => { dispatch('tab', {id: block.id}); return true; } },
                     {key: "Shift-Tab", run: () => { dispatch('shiftTab', {id: block.id}); return true; } },
-                    {key: "Enter", run: () => { dispatch('enter', {id: block.id}); return true; } }
+                    {key: "Enter", run: () => { dispatch('enter', {id: block.id}); return true; } },
+                    {key: "Backspace", run: () => { dispatch('backspace', {id: block.id}); return getCaretPosition() == 0;}}
                 ])
             ]
         });
@@ -48,6 +79,10 @@
             view.destroy();
         }
     });
+
+    $: if (view) {
+        setDocString(block.content ?? "");
+    }
 </script>
 
 <main style="--indent-level: {block.indent}">

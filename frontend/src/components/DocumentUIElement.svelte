@@ -92,6 +92,49 @@
         console.log(newBlock);
     }
 
+    async function backspaceHandler(event: CustomEvent) {
+        console.log('backspaceHandler', event);
+        let id = event.detail.id;
+
+        let index = document.blocks.findIndex(b => b.id === id);
+        if (index === -1) {
+            return
+        }
+
+        let block = document.blocks[index];
+
+        // If next block is indented cancel handling
+        if (index < document.blocks.length - 1) {
+            let nextBlock = document.blocks[index + 1];
+            if (nextBlock.indent > block.indent) {
+                return;
+            }
+        }
+
+
+        let caretPosition = blockInstances[block.id].getCaretPosition();
+        if (caretPosition != 0) {
+            return;
+        }
+
+        if (blockInstances[block.id].getSelectedContent().length > 0) {
+            return;
+        }
+
+        if (index == 0) {
+            return;
+        }
+
+        let futureCaretPosition = document.blocks[index - 1].content.length;
+        let prevBlock = document.blocks[index - 1];
+        prevBlock.content += block.content;
+        document.blocks.splice(index, 1);
+        document = document;
+        await tick();
+        blockInstances[prevBlock.id].focus();
+        blockInstances[prevBlock.id].setCaretPosition(futureCaretPosition);
+        console.log(document.blocks[index - 1]);
+    }
 </script>
 
 <main>
@@ -102,6 +145,7 @@
                         on:tab={tabHandler}
                         on:shiftTab={shiftTabHandler}
                         on:enter={enterHandler}
+                        on:backspace={backspaceHandler}
         />
     {/each}
 </main>
