@@ -135,6 +135,32 @@
         blockInstances[prevBlock.id].setCaretPosition(futureCaretPosition);
         console.log(document.blocks[index - 1]);
     }
+
+    function arrowUpHandler(event: CustomEvent) {
+        console.log('arrowUpHandler', event);
+        let id = event.detail.id;
+
+        let index = document.blocks.findIndex(b => b.id === id);
+        if (index <= 0) {
+            return
+        }
+
+        let prevBlock = document.blocks[index - 1];
+        blockInstances[prevBlock.id].focus();
+    }
+
+    function arrowDownHandler(event: CustomEvent) {
+        console.log('arrowDownHandler', event);
+        let id = event.detail.id;
+
+        let index = document.blocks.findIndex(b => b.id === id);
+        if (index >= document.blocks.length - 1) {
+            return
+        }
+
+        let nextBlock = document.blocks[index + 1];
+        blockInstances[nextBlock.id].focus();
+    }
 </script>
 
 <main>
@@ -146,6 +172,8 @@
                         on:shiftTab={shiftTabHandler}
                         on:enter={enterHandler}
                         on:backspace={backspaceHandler}
+                        on:arrowUp={arrowUpHandler}
+                        on:arrowDown={arrowDownHandler}
         />
     {/each}
 </main>

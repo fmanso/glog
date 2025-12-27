@@ -59,6 +59,31 @@
         view.dispatch(transaction);
     }
 
+    function handleArrowUp() {
+        // If caret is at the first line of the block, dispatch
+        const state = view.state;
+        const selection = state.selection.main;
+        const line = state.doc.lineAt(selection.from);
+        if (line.from == 0) {
+            dispatch('arrowUp', {id: block.id});
+            return true;
+        }
+        return false;
+    }
+
+    function handleArrowDown() {
+        // If caret is at the last line of the block, dispatch
+        const state = view.state;
+        const selection = state.selection.main;
+        const line = state.doc.lineAt(selection.from);
+        const lastLine = state.doc.lineAt(state.doc.length - 1);
+        if (line.from == lastLine.from) {
+            dispatch('arrowDown', {id: block.id});
+            return true;
+        }
+        return false;
+    }
+
     onMount(() => {
         view = new EditorView({
             doc: block.content,
@@ -68,7 +93,9 @@
                     {key: "Tab", run: () => { dispatch('tab', {id: block.id}); return true; } },
                     {key: "Shift-Tab", run: () => { dispatch('shiftTab', {id: block.id}); return true; } },
                     {key: "Enter", run: () => { dispatch('enter', {id: block.id}); return true; } },
-                    {key: "Backspace", run: () => { dispatch('backspace', {id: block.id}); return getCaretPosition() == 0;}}
+                    {key: "Backspace", run: () => { dispatch('backspace', {id: block.id}); return getCaretPosition() == 0;}},
+                    {key: "ArrowUp", run: () => { return handleArrowUp(); } },
+                    {key: "ArrowDown", run: () => { return handleArrowDown();} }
                 ])
             ]
         });
