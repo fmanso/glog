@@ -110,7 +110,7 @@
                     {key: "Tab", run: () => { dispatch('tab', {id: block.id}); return true; } },
                     {key: "Shift-Tab", run: () => { dispatch('shiftTab', {id: block.id}); return true; } },
                     {key: "Enter", run: () => { dispatch('enter', {id: block.id}); return true; } },
-                    {key: "Backspace", run: () => { dispatch('backspace', {id: block.id}); return getCaretPosition() == 0;}},
+                    {key: "Backspace", run: () => { dispatch('backspace', {id: block.id}); return getCaretPosition() === 0;}},
                     {key: "ArrowUp", run: () => { return handleArrowUp(); } },
                     {key: "ArrowDown", run: () => { return handleArrowDown();} }
                 ])
