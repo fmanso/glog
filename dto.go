@@ -10,4 +10,11 @@ type DocumentDto struct {
 	Id     string     `json:"id"`
 	Title  string     `json:"title"`
 	Blocks []BlockDto `json:"blocks"`
+	Date   string     `json:"date"` // RFC 3339 format
+}
+
+type DocumentSummaryDto struct {
+	Id    string `json:"id"`
+	Title string `json:"title"`
+	Date  string `json:"date"` // RFC 3339 format
 }

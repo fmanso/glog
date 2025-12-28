@@ -20,6 +20,7 @@ export namespace main {
 	    id: string;
 	    title: string;
 	    blocks: BlockDto[];
+	    date: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new DocumentDto(source);
@@ -30,6 +31,7 @@ export namespace main {
 	        this.id = source["id"];
 	        this.title = source["title"];
 	        this.blocks = this.convertValues(source["blocks"], BlockDto);
+	        this.date = source["date"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -49,6 +51,22 @@ export namespace main {
 		    }
 		    return a;
 		}
+	}
+	export class DocumentSummaryDto {
+	    id: string;
+	    title: string;
+	    date: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DocumentSummaryDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	        this.date = source["date"];
+	    }
 	}
 
 }

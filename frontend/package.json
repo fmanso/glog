@@ -29,6 +29,7 @@
     "@codemirror/state": "^6.5.3",
     "@codemirror/view": "^6.39.7",
     "dompurify": "^3.3.1",
-    "marked": "^17.0.1"
+    "marked": "^17.0.1",
+    "svelte-spa-router": "^4.0.1"
   }
 }

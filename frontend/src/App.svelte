@@ -1,19 +1,23 @@
 <script lang="ts">
+    import Router from 'svelte-spa-router';
     import { onMount } from 'svelte';
-    import DocumentUIElement from './components/DocumentUIElement.svelte';
-    import { LoadJournalToday } from '../wailsjs/go/main/App'
-    import { main } from '../wailsjs/go/models'
-    let document : main.DocumentDto;
+    import Document from './Document.svelte';
+    import OpenDocument from './OpenDocument.svelte';
 
     onMount(async () => {
-        document = await LoadJournalToday();
     });
+
+    const routes = {
+        '/': Document,
+        '/open': OpenDocument,
+        '*': Document,
+    }
 </script>
 
 <main>
-    {#if document}
-        <DocumentUIElement document={document}></DocumentUIElement>
-    {:else}
-        <h1>Loading...</h1>
-    {/if}
+    <nav>
+        <a href="#/">Today's Document</a> |
+        <a href="#/open">Open Document</a>
+    </nav>
+    <Router {routes} />
 </main>
