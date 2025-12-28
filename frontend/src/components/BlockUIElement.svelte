@@ -65,7 +65,7 @@
         const state = view.state;
         const selection = state.selection.main;
         const line = state.doc.lineAt(selection.from);
-        if (line.from == 0) {
+        if (line.from === 0) {
             dispatch('arrowUp', {id: block.id});
             return true;
         }
@@ -78,7 +78,7 @@
         const selection = state.selection.main;
         const line = state.doc.lineAt(selection.from);
         const lastLine = state.doc.lineAt(state.doc.length - 1);
-        if (line.from == lastLine.from) {
+        if (line.from === lastLine.from) {
             dispatch('arrowDown', {id: block.id});
             return true;
         }
