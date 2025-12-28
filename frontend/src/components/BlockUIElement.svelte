@@ -3,6 +3,7 @@
     import { EditorView, keymap } from '@codemirror/view';
     import { Block } from './block';
     import { createEventDispatcher } from "svelte";
+    import {autocompletion} from "@codemirror/autocomplete";
 
     const dispatch = createEventDispatcher();
     export let block: Block;
@@ -84,11 +85,27 @@
         return false;
     }
 
+    function autocomplete(context) {
+        let word = context.matchBefore(/\[\[\w*/);
+        if (!word || (word.from === word.to && !context.explicit)) return null;
+        return {
+            from: word.from + 2, // Start the completion AFTER the '[['
+            options: [
+                { label: "Daily Notes", type: "keyword" },
+                { label: "Projects", type: "keyword" },
+                { label: "Brainstorming", type: "keyword" },
+            ],
+            // Optional: add a filter so it narrows down as you type
+            filter: true
+        };
+    }
+
     onMount(() => {
         view = new EditorView({
             doc: block.content,
             parent: editorContainer,
             extensions: [
+                autocompletion({override: [autocomplete]}),
                 keymap.of([
                     {key: "Tab", run: () => { dispatch('tab', {id: block.id}); return true; } },
                     {key: "Shift-Tab", run: () => { dispatch('shiftTab', {id: block.id}); return true; } },
