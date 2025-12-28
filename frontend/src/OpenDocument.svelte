@@ -6,7 +6,10 @@
     let documents : main.DocumentSummaryDto[] = [];
 
     onMount(async () => {
-        documents = await GetDocumentList();
+        console.log("Requesting document list...");
+        let docs = await GetDocumentList();
+        console.log(docs)
+        documents = docs;
     });
 </script>
 

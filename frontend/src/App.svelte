@@ -16,7 +16,7 @@
 
 <main>
     <nav>
-        <a href="#/">Today's Document</a> |
+        <a href="/">Today's Document</a> |
         <a href="#/open">Open Document</a>
     </nav>
     <Router {routes} />

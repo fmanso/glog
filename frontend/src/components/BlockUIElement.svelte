@@ -6,7 +6,6 @@
     import {autocompletion} from "@codemirror/autocomplete";
     import { marked } from 'marked';
     import DOMPurify from 'dompurify';
-
     const dispatch = createEventDispatcher();
     export let block: main.BlockDto;
 
@@ -121,6 +120,7 @@
                 EditorView.updateListener.of((update) => {
                     if (update.docChanged) {
                         block.content = update.state.doc.toString();
+                        triggerDebouncedSave();
                     }
                 })
             ],
@@ -139,11 +139,17 @@
 
     $: markdownHtml = DOMPurify.sanitize(marked.parse(block.content ?? "", { async: false }) as string);
     let isEditing = true;
+    let saveTimeout: number;
+    function triggerDebouncedSave() {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(() => {
+            dispatch('save', {id: block.id});
+        }, 100);
+    }
 </script>
 
 <main style="--indent-level: {block.indent}">
     <div>· ({block.indent})</div>
-    <!-- FIX 2: Keep editor in DOM but hidden when not editing -->
     <div style="display: {isEditing ? 'block' : 'none'}; width: 100%;">
         <div bind:this={editorContainer}></div>
     </div>

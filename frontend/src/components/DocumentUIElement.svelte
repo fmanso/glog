@@ -1,5 +1,6 @@
 <script lang="ts">
     import { tick } from 'svelte';
+    import { SaveDocument } from "../../wailsjs/go/main/App";
     import BlockUIElement from './BlockUIElement.svelte';
     import type { main } from '../../wailsjs/go/models';
     export let document: main.DocumentDto;
@@ -161,6 +162,11 @@
         let nextBlock = document.blocks[index + 1];
         blockInstances[nextBlock.id].focus();
     }
+
+    async function saveDocument() {
+        console.log("Saving document...", document);
+        await SaveDocument(document);
+    }
 </script>
 
 <main>
@@ -174,6 +180,7 @@
                         on:backspace={backspaceHandler}
                         on:arrowUp={arrowUpHandler}
                         on:arrowDown={arrowDownHandler}
+                        on:save={saveDocument}
         />
     {/each}
 </main>

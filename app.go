@@ -81,7 +81,7 @@ func (a *App) CreateNewDocument(title string) (DocumentDto, error) {
 }
 
 func (a *App) GetDocumentList() ([]DocumentSummaryDto, error) {
-	var summaries []DocumentSummaryDto
+	summaries := make([]DocumentSummaryDto, len(memory))
 	for _, doc := range memory {
 		summaries = append(summaries, DocumentSummaryDto{
 			Id:    doc.Id,
