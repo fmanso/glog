@@ -124,7 +124,7 @@
         }
     });
 
-    $: if (view) {
+    $: if (view && (block.content ?? "") !== view.state.doc.toString()) {
         setDocString(block.content ?? "");
     }
 </script>
