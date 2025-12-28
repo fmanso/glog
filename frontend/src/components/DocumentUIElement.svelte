@@ -113,7 +113,7 @@
 
 
         let caretPosition = blockInstances[block.id].getCaretPosition();
-        if (caretPosition != 0) {
+        if (caretPosition !== 0) {
             return;
         }
 
