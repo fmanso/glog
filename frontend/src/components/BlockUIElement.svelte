@@ -136,15 +136,18 @@
 </main>
 
 <style>
+    :global(:root) {
+        --indent-size-px: 20px;
+    }
     main {
         display: flex;
         align-items: center;
-        margin-left: calc(var(--indent-level) * 20px);
+        margin-left: calc(var(--indent-level) * var(--indent-size-px));
         margin-top: 4px;
         margin-bottom: 4px;
     }
     main > div:first-child {
-        width: 20px;
+        width: var(--indent-size-px);
         text-align: center;
         user-select: none;
         color: #888;
