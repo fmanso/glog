@@ -11,12 +11,12 @@
         let id = event.detail.id;
 
         let index = document.blocks.findIndex(b => b.id === id);
-        if (index == 0 || index === -1) {
+        if (index === 0 || index === -1) {
             return
         }
 
         let block = document.blocks[index];
-        if (block.indent == 0) {
+        if (block.indent === 0) {
             return;
         }
 
@@ -40,7 +40,7 @@
         let id = event.detail.id;
 
         let index = document.blocks.findIndex(b => b.id === id);
-        if (index == 0 || index === -1) {
+        if (index === 0 || index === -1) {
             return
         }
 
@@ -121,7 +121,7 @@
             return;
         }
 
-        if (index == 0) {
+        if (index === 0) {
             return;
         }
 
