@@ -33,7 +33,18 @@ class BlockManager {
   }
 
   createBlockId(): string {
-    return Math.random().toString(36).substr(2, 9)
+    if (typeof crypto !== "undefined") {
+      if (typeof (crypto as any).randomUUID === "function") {
+        return (crypto as any).randomUUID()
+      }
+      if (typeof crypto.getRandomValues === "function") {
+        const array = new Uint32Array(1)
+        crypto.getRandomValues(array)
+        return array[0].toString(36)
+      }
+    }
+    // Fallback: timestamp-based ID avoids Math.random and keeps IDs reasonably unique
+    return Date.now().toString(36)
   }
 
   addBlock(afterBlockId: string | null, indent: number, initialContent: string = "") {
