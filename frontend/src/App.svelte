@@ -1,18 +1,19 @@
 <script lang="ts">
+    import { onMount } from 'svelte';
     import DocumentUIElement from './components/DocumentUIElement.svelte';
-    import { Document, Block } from './components/block';
+    import { LoadJournalToday } from '../wailsjs/go/main/App'
+    import { main } from '../wailsjs/go/models'
+    let document : main.DocumentDto;
 
-    // Sample document data
-    const sampleDocument: Document = {
-        id: "doc1",
-        title: "Sample Document",
-        blocks: [
-            { id: "1", content: "This is the first block of text.", indent: 0 },
-            { id: "2", content: "This is the second block of text.", indent: 0 },
-        ],
-    };
+    onMount(async () => {
+        document = await LoadJournalToday();
+    });
 </script>
 
 <main>
-    <DocumentUIElement document={sampleDocument}></DocumentUIElement>
+    {#if document}
+        <DocumentUIElement document={document}></DocumentUIElement>
+    {:else}
+        <h1>Loading...</h1>
+    {/if}
 </main>

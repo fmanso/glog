@@ -1,17 +1,20 @@
 <script lang="ts">
     import { onMount, onDestroy } from 'svelte';
     import { EditorView, keymap } from '@codemirror/view';
-    import { Block } from './block';
+    import type { main } from '../../wailsjs/go/models';
     import { createEventDispatcher } from "svelte";
     import {autocompletion} from "@codemirror/autocomplete";
+    import { marked } from 'marked';
+    import DOMPurify from 'dompurify';
 
     const dispatch = createEventDispatcher();
-    export let block: Block;
+    export let block: main.BlockDto;
 
     let editorContainer: HTMLDivElement;
     let view: EditorView;
 
     export function focus() {
+        isEditing = true;
         view?.focus();
     }
 
@@ -112,9 +115,15 @@
                     {key: "Enter", run: () => { dispatch('enter', {id: block.id}); return true; } },
                     {key: "Backspace", run: () => { dispatch('backspace', {id: block.id}); return getCaretPosition() === 0;}},
                     {key: "ArrowUp", run: () => { return handleArrowUp(); } },
-                    {key: "ArrowDown", run: () => { return handleArrowDown();} }
-                ])
-            ]
+                    {key: "ArrowDown", run: () => { return handleArrowDown();} },
+                    {key: "Escape", run: () => { isEditing = false; return true; }},
+                ]),
+                EditorView.updateListener.of((update) => {
+                    if (update.docChanged) {
+                        block.content = update.state.doc.toString();
+                    }
+                })
+            ],
         });
     });
 
@@ -127,12 +136,24 @@
     $: if (view && (block.content ?? "") !== view.state.doc.toString()) {
         setDocString(block.content ?? "");
     }
+
+    $: markdownHtml = DOMPurify.sanitize(marked.parse(block.content ?? "", { async: false }) as string);
+    let isEditing = true;
 </script>
 
 <main style="--indent-level: {block.indent}">
     <div>· ({block.indent})</div>
-    <div bind:this={editorContainer}>
+    <!-- FIX 2: Keep editor in DOM but hidden when not editing -->
+    <div style="display: {isEditing ? 'block' : 'none'}; width: 100%;">
+        <div bind:this={editorContainer}></div>
     </div>
+
+    {#if !isEditing}
+        <div class="markdown-preview" on:dblclick={() => isEditing = true} >
+            {@html markdownHtml}
+        </div>
+    {/if}
+
 </main>
 
 <style>

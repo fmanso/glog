@@ -1,26 +1,25 @@
 export namespace main {
 	
-	export class ParagraphDto {
+	export class BlockDto {
 	    id: string;
 	    content: string;
-	    indentation: number;
+	    indent: number;
 	
 	    static createFrom(source: any = {}) {
-	        return new ParagraphDto(source);
+	        return new BlockDto(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.content = source["content"];
-	        this.indentation = source["indentation"];
+	        this.indent = source["indent"];
 	    }
 	}
 	export class DocumentDto {
 	    id: string;
 	    title: string;
-	    date: string;
-	    body: ParagraphDto[];
+	    blocks: BlockDto[];
 	
 	    static createFrom(source: any = {}) {
 	        return new DocumentDto(source);
@@ -30,8 +29,7 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.title = source["title"];
-	        this.date = source["date"];
-	        this.body = this.convertValues(source["body"], ParagraphDto);
+	        this.blocks = this.convertValues(source["blocks"], BlockDto);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -51,23 +49,6 @@ export namespace main {
 		    }
 		    return a;
 		}
-	}
-
-}
-
-export namespace time {
-	
-	export class Time {
-	
-	
-	    static createFrom(source: any = {}) {
-	        return new Time(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	
-	    }
 	}
 
 }

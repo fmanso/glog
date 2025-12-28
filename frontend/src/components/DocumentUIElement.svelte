@@ -1,8 +1,8 @@
 <script lang="ts">
     import { tick } from 'svelte';
     import BlockUIElement from './BlockUIElement.svelte';
-    import {Block, Document} from './block';
-    export let document: Document;
+    import type { main } from '../../wailsjs/go/models';
+    export let document: main.DocumentDto;
     let blockInstances: Record<string, BlockUIElement> = {};
 
 
@@ -78,7 +78,7 @@
         let block = document.blocks[index];
         let content = blockInstances[block.id].getContentAfterCaret();
         // Content should include text after caret position
-        let newBlock: Block = {
+        let newBlock: main.BlockDto = {
             id: crypto.randomUUID(),
             content: content,
             indent: block.indent
