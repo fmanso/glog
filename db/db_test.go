@@ -1,9 +1,6 @@
 package db
 
 import (
-	"encoding/gob"
-	"errors"
-	"fmt"
 	"glog/domain"
 	"os"
 	"testing"
@@ -12,104 +9,71 @@ import (
 	"github.com/google/uuid"
 )
 
-func init() {
-	gob.Register(domain.Document{})
-	gob.Register(domain.Paragraph{})
-}
-
 func TestNewDocumentStore(t *testing.T) {
-	db, err := NewDocumentStore("./testnew.db")
+	store, err := NewDocumentStore("./testnewdocumentstore.db")
 	if err != nil {
 		t.Fatalf("Failed to create DocumentStore: %v", err)
 	}
-	defer os.Remove("./testnew.db")
-	defer db.Close()
+	defer func() {
+		err := store.Close()
+		if err != nil {
+			t.Errorf("Failed to close DocumentStore: %v", err)
+		}
+
+		err = os.Remove("./testnewdocumentstore.db")
+	}()
+
+	if store == nil {
+		t.Fatal("DocumentStore is nil")
+	}
 }
 
-func TestLoadForEmpty(t *testing.T) {
-	store, err := NewDocumentStore("./testloadfor.db")
+func TestDocumentStore_Save(t *testing.T) {
+	store, err := NewDocumentStore("./testsave.db")
 	if err != nil {
 		t.Fatalf("Failed to create DocumentStore: %v", err)
 	}
-	defer os.Remove("./testloadfor.db")
-	defer store.Close()
+	defer func() {
+		err := store.Close()
+		if err != nil {
+			t.Errorf("Failed to close DocumentStore: %v", err)
+		}
 
-	date := time.Now().Truncate(24 * time.Hour)
-	_, err = store.GetDocumentFor(date)
-	if errors.Is(err, ErrDocumentNotFound) {
-		return
-	}
+		err = os.Remove("./testsave.db")
+	}()
 
-	t.Fatalf("Expected ErrDocumentNotFound, got: %v", err)
-}
-
-func TestSaveAndLoad(t *testing.T) {
-	store, err := NewDocumentStore("./testloadfor.db")
-	if err != nil {
-		t.Fatalf("Failed to create DocumentStore: %v", err)
-	}
-	defer os.Remove("./testloadfor.db")
-	defer store.Close()
-
-	date := time.Now().Truncate(24 * time.Hour)
 	doc := &domain.Document{
 		ID:    domain.DocumentID(uuid.New()),
 		Title: "Test Document",
-		Date:  domain.ToDateTime(date),
-		Body:  []*domain.Paragraph{},
+		Date:  time.Now().UTC(),
+		Blocks: []*domain.Block{
+			{
+				ID:      domain.BlockID(uuid.New()),
+				Content: "Test Content",
+				Indent:  0,
+			},
+		},
 	}
-	err = store.Save(doc)
 
-	_, err = store.GetDocumentFor(date)
+	err = store.Save(doc)
+	if err != nil {
+		t.Fatalf("Failed to save document: %v", err)
+	}
+
+	got, err := store.LoadDocument(doc.ID)
 	if err != nil {
 		t.Fatalf("Failed to load document: %v", err)
 	}
-}
 
-func TestDbHandleReferences(t *testing.T) {
-	store, err := NewDocumentStore("./testreferences.db")
-	if err != nil {
-		t.Fatalf("Failed to create DocumentStore: %v", err)
+	if got.Title != doc.Title {
+		t.Errorf("Loaded document title mismatch: got %v, want %v", got.Title, doc.Title)
 	}
 
-	defer func() {
-		defer store.Close()
-		defer os.Remove("./testreferences.db")
-	}()
-
-	docId := uuid.New()
-	doc := &domain.Document{
-		ID:    domain.DocumentID(docId),
-		Title: "Test Document",
-		Date:  domain.ToDateTime(time.Now().Truncate(24 * time.Hour)),
-		Body:  []*domain.Paragraph{},
-	}
-	_ = store.Save(doc)
-
-	refDocId := uuid.New()
-	refDoc := &domain.Document{
-		ID:    domain.DocumentID(refDocId),
-		Title: "Referencing Document",
-		Date:  domain.ToDateTime(time.Now().UTC()),
-		Body:  []*domain.Paragraph{},
+	if len(got.Blocks) != len(doc.Blocks) {
+		t.Fatalf("Loaded document blocks length mismatch: got %v, want %v", len(got.Blocks), len(doc.Blocks))
 	}
 
-	_ = refDoc.InsertParagraphAt(0, "", 0)
-
-	_ = store.Save(refDoc)
-
-	para := refDoc.Body[0]
-	err = store.SetParagraphContent(para.ID, domain.Content(fmt.Sprintf("This is a reference to [[%s:%s]].", docId.String(), "Test Document")))
-	if err != nil {
-		t.Fatalf("Failed to set paragraph content: %v", err)
-	}
-
-	references, err := store.GetReferences(domain.DocumentID(docId))
-	if err != nil {
-		t.Fatalf("Failed to get references: %v", err)
-	}
-
-	if len(references) != 1 {
-		t.Fatalf("Expected 1 reference, got %d", len(references))
+	if got.Blocks[0].Content != doc.Blocks[0].Content {
+		t.Errorf("Loaded document block content mismatch: got %v, want %v", got.Blocks[0].Content, doc.Blocks[0].Content)
 	}
 }

@@ -3,7 +3,6 @@ package main
 import (
 	"embed"
 	"glog/db"
-	"glog/services"
 
 	"github.com/labstack/gommon/log"
 	"github.com/wailsapp/wails/v2"
@@ -17,6 +16,7 @@ var assets embed.FS
 func main() {
 	// Setup logging in Debug mode
 	log.SetLevel(log.DEBUG)
+
 	dbStore, err := db.NewDocumentStore("glog.db")
 	if err != nil {
 		panic("Failed to initialize database: " + err.Error())
@@ -24,9 +24,7 @@ func main() {
 
 	defer dbStore.Close()
 
-	docService := services.NewDocumentService(dbStore)
-	// Create an instance of the app structure
-	app := NewApp(dbStore, docService)
+	app := NewApp(dbStore)
 
 	// Create application with options
 	err = wails.Run(&options.App{

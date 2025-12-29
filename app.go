@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"glog/db"
-	"glog/services"
 	"time"
 
 	"github.com/google/uuid"
@@ -11,16 +10,14 @@ import (
 
 // App struct
 type App struct {
-	ctx        context.Context
-	store      *db.DocumentStore
-	docService *services.DocumentService
+	ctx context.Context
+	db  *db.DocumentStore
 }
 
 // NewApp creates a new App application struct
-func NewApp(db *db.DocumentStore, docService *services.DocumentService) *App {
+func NewApp(db *db.DocumentStore) *App {
 	return &App{
-		store:      db,
-		docService: docService,
+		db: db,
 	}
 }
 
