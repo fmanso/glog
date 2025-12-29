@@ -134,3 +134,41 @@ func (store *DocumentStore) LoadDocument(id domain.DocumentID) (*domain.Document
 
 	return &doc, nil
 }
+
+type DocumentSummary struct {
+	ID    domain.DocumentID
+	Title string
+	Date  time.Time
+}
+
+func (store *DocumentStore) ListDocuments() ([]DocumentSummary, error) {
+	var summaries []DocumentSummary
+	err := store.bolt.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(store.bucketDocs)
+		return bucket.ForEach(func(k, v []byte) error {
+			// Deserialize DocDb
+			var docDb DocDb
+			buf := bytes.NewBuffer(v)
+			dec := gob.NewDecoder(buf)
+			err := dec.Decode(&docDb)
+			if err != nil {
+				return err
+			}
+
+			date, _ := time.Parse(time.RFC3339, docDb.Date)
+
+			summaries = append(summaries, DocumentSummary{
+				ID:    domain.DocumentID(docDb.ID),
+				Title: docDb.Title,
+				Date:  date,
+			})
+			return nil
+		})
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return summaries, nil
+}

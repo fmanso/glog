@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"glog/db"
+	"glog/domain"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,16 +28,17 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 }
 
-var memory = make(map[uuid.UUID]DocumentDto)
-
 func (a *App) SaveDocument(doc DocumentDto) error {
-	// Parse UUID
-	id, err := uuid.Parse(doc.Id)
+	domainDoc, err := doc.ToDomain()
 	if err != nil {
 		return err
 	}
 
-	memory[id] = doc
+	err = a.db.Save(domainDoc)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -63,32 +65,42 @@ func (a *App) LoadJournalToday() (DocumentDto, error) {
 }
 
 func (a *App) CreateNewDocument(title string) (DocumentDto, error) {
-	doc := DocumentDto{
-		Id:    uuid.NewString(),
+	doc := domain.Document{
+		ID:    domain.DocumentID(uuid.New()),
 		Title: title,
-		Date:  time.Now().UTC().Format(time.RFC3339),
-		Blocks: []BlockDto{
+		Date:  time.Now().UTC(),
+		Blocks: []*domain.Block{
 			{
-				Id:      uuid.NewString(),
+				ID:      domain.BlockID(uuid.New()),
 				Content: "",
 				Indent:  0,
 			},
 		},
 	}
 
-	memory[uuid.MustParse(doc.Id)] = doc
-	return doc, nil
+	err := a.db.Save(&doc)
+	if err != nil {
+		return DocumentDto{}, err
+	}
+
+	return ToDocumentDto(&doc), nil
 }
 
 func (a *App) GetDocumentList() ([]DocumentSummaryDto, error) {
-	summaries := make([]DocumentSummaryDto, len(memory))
-	for _, doc := range memory {
-		summaries = append(summaries, DocumentSummaryDto{
-			Id:    doc.Id,
-			Title: doc.Title,
-			Date:  doc.Date,
-		})
+	docs, err := a.db.ListDocuments()
+	if err != nil {
+		return nil, err
 	}
+
+	summaries := make([]DocumentSummaryDto, len(docs))
+	for i, doc := range docs {
+		summaries[i] = DocumentSummaryDto{
+			Id:    doc.ID.String(),
+			Title: doc.Title,
+			Date:  doc.Date.Format(time.RFC3339),
+		}
+	}
+
 	return summaries, nil
 }
 
@@ -98,11 +110,12 @@ func (a *App) OpenDocument(docId string) (DocumentDto, error) {
 		return DocumentDto{}, err
 	}
 
-	doc, exists := memory[id]
-	if !exists {
-		return DocumentDto{}, nil
+	domainDoc, err := a.db.LoadDocument(domain.DocumentID(id))
+	if err != nil {
+		return DocumentDto{}, err
 	}
 
+	doc := ToDocumentDto(domainDoc)
 	return doc, nil
 }
 

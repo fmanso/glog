@@ -77,3 +77,63 @@ func TestDocumentStore_Save(t *testing.T) {
 		t.Errorf("Loaded document block content mismatch: got %v, want %v", got.Blocks[0].Content, doc.Blocks[0].Content)
 	}
 }
+
+func TestDocumentStore_ListDocuments(t *testing.T) {
+	store, err := NewDocumentStore("./testlistdocuments.db")
+	if err != nil {
+		t.Fatalf("Failed to create DocumentStore: %v", err)
+	}
+	defer func() {
+		err := store.Close()
+		if err != nil {
+			t.Errorf("Failed to close DocumentStore: %v", err)
+		}
+
+		err = os.Remove("./testlistdocuments.db")
+	}()
+
+	doc1 := &domain.Document{
+		ID:    domain.DocumentID(uuid.New()),
+		Title: "Test Document 1",
+		Date:  time.Now().UTC(),
+		Blocks: []*domain.Block{
+			{
+				ID:      domain.BlockID(uuid.New()),
+				Content: "Test Content 1",
+				Indent:  0,
+			},
+		},
+	}
+
+	doc2 := &domain.Document{
+		ID:    domain.DocumentID(uuid.New()),
+		Title: "Test Document 2",
+		Date:  time.Now().UTC(),
+		Blocks: []*domain.Block{
+			{
+				ID:      domain.BlockID(uuid.New()),
+				Content: "Test Content 2",
+				Indent:  0,
+			},
+		},
+	}
+
+	err = store.Save(doc1)
+	if err != nil {
+		t.Fatalf("Failed to save document 1: %v", err)
+	}
+
+	err = store.Save(doc2)
+	if err != nil {
+		t.Fatalf("Failed to save document 2: %v", err)
+	}
+
+	docs, err := store.ListDocuments()
+	if err != nil {
+		t.Fatalf("Failed to list documents: %v", err)
+	}
+
+	if len(docs) != 2 {
+		t.Errorf("Listed documents length mismatch: got %v, want %v", len(docs), 2)
+	}
+}
