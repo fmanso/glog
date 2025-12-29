@@ -21,3 +21,7 @@ export function OpenDocument(arg1) {
 export function SaveDocument(arg1) {
   return window['go']['main']['App']['SaveDocument'](arg1);
 }
+
+export function SearchDocuments(arg1) {
+  return window['go']['main']['App']['SearchDocuments'](arg1);
+}

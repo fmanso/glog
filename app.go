@@ -108,3 +108,8 @@ func (a *App) OpenDocument(docId string) (DocumentDto, error) {
 
 	return doc, nil
 }
+
+func (a *App) SearchDocuments(search string) ([]DocumentSummaryDto, error) {
+	// For simplicity, return all documents as search results
+	return a.GetDocumentList()
+}

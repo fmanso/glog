@@ -6,6 +6,7 @@
     import {autocompletion} from "@codemirror/autocomplete";
     import { marked } from 'marked';
     import DOMPurify from 'dompurify';
+    import {SearchDocuments} from "../../wailsjs/go/main/App";
     const dispatch = createEventDispatcher();
     export let block: main.BlockDto;
 
@@ -87,16 +88,17 @@
         return false;
     }
 
-    function autocomplete(context) {
+    async function autocomplete(context) {
         let word = context.matchBefore(/\[\[\w*/);
         if (!word || (word.from === word.to && !context.explicit)) return null;
+
+        let results = await SearchDocuments(word.text.slice(2));
+
+        let options = results.map(r => ({label: r.title, type: "document", info: r.id}));
+
         return {
             from: word.from + 2, // Start the completion AFTER the '[['
-            options: [
-                { label: "Daily Notes", type: "keyword" },
-                { label: "Projects", type: "keyword" },
-                { label: "Brainstorming", type: "keyword" },
-            ],
+            options: options,
             // Optional: add a filter so it narrows down as you type
             filter: true
         };
