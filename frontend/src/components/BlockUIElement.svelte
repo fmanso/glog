@@ -94,7 +94,13 @@
 
         let results = await SearchDocuments(word.text.slice(2));
 
-        let options = results.map(r => ({label: r.title, type: "document", info: r.id}));
+        let options = results.map(r => (
+            {
+                label: r.title,
+                type: "document",
+                apply: `[${r.title}](${r.id})`,
+                info: r.id
+            }));
 
         return {
             from: word.from + 2, // Start the completion AFTER the '[['
