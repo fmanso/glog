@@ -16,7 +16,7 @@
 <main>
     {#if documents.length > 0}
         {#each documents as document}
-            <div>{document.title}</div>
+            <div><a href="#/doc/{document.id}">{document.title}</a></div>
         {/each}
     {:else}
         <h1>No documents found.</h1>
