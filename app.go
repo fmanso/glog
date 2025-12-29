@@ -66,7 +66,7 @@ func (a *App) LoadJournalToday() (DocumentDto, error) {
 }
 
 func (a *App) CreateNewDocument(title string) (DocumentDto, error) {
-	return DocumentDto{
+	doc := DocumentDto{
 		Id:    uuid.NewString(),
 		Title: title,
 		Date:  time.Now().UTC().Format(time.RFC3339),
@@ -77,7 +77,10 @@ func (a *App) CreateNewDocument(title string) (DocumentDto, error) {
 				Indent:  0,
 			},
 		},
-	}, nil
+	}
+
+	memory[uuid.MustParse(doc.Id)] = doc
+	return doc, nil
 }
 
 func (a *App) GetDocumentList() ([]DocumentSummaryDto, error) {
@@ -90,4 +93,18 @@ func (a *App) GetDocumentList() ([]DocumentSummaryDto, error) {
 		})
 	}
 	return summaries, nil
+}
+
+func (a *App) OpenDocument(docId string) (DocumentDto, error) {
+	id, err := uuid.Parse(docId)
+	if err != nil {
+		return DocumentDto{}, err
+	}
+
+	doc, exists := memory[id]
+	if !exists {
+		return DocumentDto{}, nil
+	}
+
+	return doc, nil
 }

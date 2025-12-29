@@ -8,4 +8,6 @@ export function GetDocumentList():Promise<Array<main.DocumentSummaryDto>>;
 
 export function LoadJournalToday():Promise<main.DocumentDto>;
 
+export function OpenDocument(arg1:string):Promise<main.DocumentDto>;
+
 export function SaveDocument(arg1:main.DocumentDto):Promise<void>;

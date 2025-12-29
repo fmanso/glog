@@ -14,6 +14,10 @@ export function LoadJournalToday() {
   return window['go']['main']['App']['LoadJournalToday']();
 }
 
+export function OpenDocument(arg1) {
+  return window['go']['main']['App']['OpenDocument'](arg1);
+}
+
 export function SaveDocument(arg1) {
   return window['go']['main']['App']['SaveDocument'](arg1);
 }
