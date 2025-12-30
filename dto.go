@@ -58,7 +58,7 @@ func (d DocumentDto) ToDomain() (*domain.Document, error) {
 		Blocks: make([]*domain.Block, len(d.Blocks)),
 	}
 
-	for i, b := range doc.Blocks {
+	for i, b := range d.Blocks {
 		blockId, err := uuid.Parse(d.Blocks[i].Id)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing block id: %s", err)
