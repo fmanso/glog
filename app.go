@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"glog/db"
 	"glog/domain"
 	"time"
@@ -47,21 +48,29 @@ func (a *App) LoadJournalToday() (DocumentDto, error) {
 	t := time.Now().UTC()
 	t = time.Date(t.Year(), t.Month(), t.Day(), 6, 0, 0, 0, time.UTC)
 
-	// Create title based on date (e.g., "Monday, January 2, 2006")
-	title := t.Format("Monday, January 2, 2006")
+	doc, err := a.db.LoadDocumentByTime(t)
+	if err == nil {
+		return ToDocumentDto(doc), nil
+	}
 
-	return DocumentDto{
-		Id:    uuid.NewString(),
-		Title: title,
-		Date:  time.Now().UTC().Format(time.RFC3339),
-		Blocks: []BlockDto{
-			{
-				Id:      uuid.NewString(),
-				Content: "",
-				Indent:  0,
+	if errors.Is(err, db.ErrDocumentNotFound) {
+		// Create title based on date (e.g., "Monday, January 2, 2006")
+		title := t.Format("Monday, January 2, 2006")
+		return DocumentDto{
+			Id:    uuid.NewString(),
+			Title: title,
+			Date:  t.Format(time.RFC3339),
+			Blocks: []BlockDto{
+				{
+					Id:      uuid.NewString(),
+					Content: "",
+					Indent:  0,
+				},
 			},
-		},
-	}, nil
+		}, nil
+	}
+
+	return DocumentDto{}, err
 }
 
 func (a *App) CreateNewDocument(title string) (DocumentDto, error) {

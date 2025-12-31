@@ -16,9 +16,10 @@ import (
 var ErrDocumentNotFound = errors.New("document not found")
 
 type DocumentStore struct {
-	path       string
-	bolt       *bolt.DB
-	bucketDocs []byte
+	path            string
+	bolt            *bolt.DB
+	bucketDocs      []byte
+	bucketTimeIndex []byte
 }
 
 func NewDocumentStore(path string) (*DocumentStore, error) {
@@ -27,8 +28,16 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 		return nil, err
 	}
 
+	docsKey := []byte("documents")
+	timeIndexKey := []byte("time_index")
+
 	err = db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte("documents"))
+		_, err := tx.CreateBucketIfNotExists(docsKey)
+		if err != nil {
+			return err
+		}
+
+		_, err = tx.CreateBucketIfNotExists(timeIndexKey)
 		if err != nil {
 			return err
 		}
@@ -41,9 +50,10 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 	}
 
 	return &DocumentStore{
-		bolt:       db,
-		path:       path,
-		bucketDocs: []byte("documents"),
+		bolt:            db,
+		path:            path,
+		bucketDocs:      docsKey,
+		bucketTimeIndex: timeIndexKey,
 	}, nil
 }
 
@@ -82,13 +92,29 @@ func (store *DocumentStore) saveDoc(tx *bolt.Tx, doc *domain.Document) error {
 	return bucket.Put([]byte(doc.ID.String()), buf.Bytes())
 }
 
+func (store *DocumentStore) saveTimeIndex(tx *bolt.Tx, doc *domain.Document) error {
+	log.Printf("Saving time index: %v\n", doc)
+	bucket := tx.Bucket(store.bucketTimeIndex)
+	// The chance of accidentally overwriting an existing key is negligible
+	// since we use RFC3339 formatted timestamps with nanosecond precision.
+	err := bucket.Put([]byte(doc.Date.UTC().Format(time.RFC3339)), []byte(doc.ID.String()))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (store *DocumentStore) Save(doc *domain.Document) error {
 	return store.bolt.Update(func(tx *bolt.Tx) error {
 		err := store.saveDoc(tx, doc)
 		if err != nil {
 			return err
 		}
-
+		err = store.saveTimeIndex(tx, doc)
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 }
@@ -171,4 +197,29 @@ func (store *DocumentStore) ListDocuments() ([]DocumentSummary, error) {
 	}
 
 	return summaries, nil
+}
+
+func (store *DocumentStore) LoadDocumentByTime(date time.Time) (*domain.Document, error) {
+	var docId domain.DocumentID
+	err := store.bolt.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(store.bucketTimeIndex)
+		data := bucket.Get([]byte(date.UTC().Format(time.RFC3339)))
+		if data == nil {
+			return ErrDocumentNotFound
+		}
+
+		id, err := uuid.Parse(string(data))
+		if err != nil {
+			return err
+		}
+
+		docId = domain.DocumentID(id)
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return store.LoadDocument(docId)
 }
