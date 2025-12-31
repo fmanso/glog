@@ -98,7 +98,7 @@
             {
                 label: r.title,
                 type: "document",
-                apply: `${r.title}](${r.id})]`,
+                apply: `${r.title}]]`,
                 info: r.id
             }));
 
