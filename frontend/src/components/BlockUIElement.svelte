@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { onMount, onDestroy } from 'svelte';
+    import { onMount, onDestroy, tick } from 'svelte';
     import { EditorView, keymap } from '@codemirror/view';
     import type { main } from '../../wailsjs/go/models';
     import { createEventDispatcher } from "svelte";
@@ -13,8 +13,9 @@
     let editorContainer: HTMLDivElement;
     let view: EditorView;
 
-    export function focus() {
+    export async function focus() {
         isEditing = true;
+        await tick();
         view?.focus();
     }
 
@@ -76,8 +77,13 @@
     }
 
     function handleArrowDown() {
-        // If caret is at the last line of the block, dispatch
         const state = view.state;
+        // Document length is 0 move down
+        if (state.doc.length === 0) {
+            dispatch('arrowDown', {id: block.id});
+            return true;
+        }
+        // If caret is at the last line of the block, dispatch
         const selection = state.selection.main;
         const line = state.doc.lineAt(selection.from);
         const lastLine = state.doc.lineAt(state.doc.length - 1);
@@ -133,10 +139,21 @@
                 })
             ],
         });
+
+        handleBlur = (e: FocusEvent) => {
+            if (!view.dom.contains(e.relatedTarget as Node)) {
+                isEditing = false;
+            }
+        };
+
+        view.dom.addEventListener('focusout', handleBlur);
     });
+
+    let handleBlur: (e: FocusEvent) => void;
 
     onDestroy(() => {
         if (view) {
+            if (handleBlur) view.dom.removeEventListener('focusout', handleBlur, true);
             view.destroy();
         }
     });
@@ -148,7 +165,7 @@
     $: markdownHtml = DOMPurify.sanitize(
         marked.parse(
             replaceLinks(block.content ?? ""), { async: false }) as string);
-    let isEditing = true;
+    let isEditing = false;
     let saveTimeout: any;
     function triggerDebouncedSave() {
         clearTimeout(saveTimeout);
