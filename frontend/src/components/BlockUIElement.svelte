@@ -145,14 +145,22 @@
         setDocString(block.content ?? "");
     }
 
-    $: markdownHtml = DOMPurify.sanitize(marked.parse(block.content ?? "", { async: false }) as string);
+    $: markdownHtml = DOMPurify.sanitize(
+        marked.parse(
+            replaceLinks(block.content ?? ""), { async: false }) as string);
     let isEditing = true;
-    let saveTimeout: number;
+    let saveTimeout: any;
     function triggerDebouncedSave() {
         clearTimeout(saveTimeout);
         saveTimeout = setTimeout(() => {
             dispatch('save', {id: block.id});
         }, 100);
+    }
+
+    function replaceLinks(body: string): string {
+        return body.replace(/\[\[(.*?)\]\]/g, (match, p1) => {
+            return `<a href="#/doc/${p1}">${p1}</a>`;
+        });
     }
 </script>
 
