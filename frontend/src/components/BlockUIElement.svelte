@@ -181,14 +181,14 @@
     }
 </script>
 
-<main style="--indent-level: {block.indent}">
-    <div>· ({block.indent})</div>
-    <div style="display: {isEditing ? 'block' : 'none'}; width: 100%;">
+<main class="block" style="--indent-level: {block.indent}">
+    <div class="bullet">·</div>
+    <div class="editor-pane" style="display: {isEditing ? 'block' : 'none'}; width: 100%;">
         <div bind:this={editorContainer}></div>
     </div>
 
     {#if !isEditing}
-        <div class="markdown-preview" on:dblclick={() => isEditing = true} >
+        <div class="markdown-preview" on:dblclick={() => isEditing = true}>
             {@html markdownHtml}
         </div>
     {/if}

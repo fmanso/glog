@@ -22,10 +22,19 @@
     });
 </script>
 
-<main>
-    {#if document}
-        <DocumentUIElement document={document}></DocumentUIElement>
-    {:else}
-        <h1>Loading...</h1>
-    {/if}
+<main class="page document-view">
+    <header class="page-header">
+        <div>
+            <p class="eyebrow">Document</p>
+            <h1>{document?.title ?? 'Loading…'}</h1>
+        </div>
+    </header>
+
+    <section class="card blocks-card">
+        {#if document}
+            <DocumentUIElement document={document}></DocumentUIElement>
+        {:else}
+            <div class="empty-state">Loading…</div>
+        {/if}
+    </section>
 </main>

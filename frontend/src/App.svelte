@@ -18,11 +18,13 @@
     }
 </script>
 
-<main>
-    <nav>
-        <a href="/">Today's Document</a> |
-        <a href="#/open">Open Document</a> |
+<main class="app-shell">
+    <nav class="top-nav">
+        <a href="#/">Today's Document</a>
+        <a href="#/open">Open Document</a>
         <a href="#/new">New Document</a>
     </nav>
-    <Router {routes} />
+    <section class="view-frame">
+        <Router {routes} />
+    </section>
 </main>
