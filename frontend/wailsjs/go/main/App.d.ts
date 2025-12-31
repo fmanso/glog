@@ -10,6 +10,8 @@ export function LoadJournalToday():Promise<main.DocumentDto>;
 
 export function OpenDocument(arg1:string):Promise<main.DocumentDto>;
 
+export function OpenDocumentByTitle(arg1:string):Promise<main.DocumentDto>;
+
 export function SaveDocument(arg1:main.DocumentDto):Promise<void>;
 
 export function SearchDocuments(arg1:string):Promise<Array<main.DocumentSummaryDto>>;

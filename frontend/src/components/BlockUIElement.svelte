@@ -165,7 +165,7 @@
     $: markdownHtml = DOMPurify.sanitize(
         marked.parse(
             replaceLinks(block.content ?? ""), { async: false }) as string);
-    let isEditing = false;
+    let isEditing = true;
     let saveTimeout: any;
     function triggerDebouncedSave() {
         clearTimeout(saveTimeout);
@@ -176,7 +176,7 @@
 
     function replaceLinks(body: string): string {
         return body.replace(/\[\[(.*?)\]\]/g, (match, p1) => {
-            return `<a href="#/doc/${p1}">${p1}</a>`;
+            return `<a href="#/doc-title/${p1}">${p1}</a>`;
         });
     }
 </script>

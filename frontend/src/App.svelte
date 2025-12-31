@@ -12,6 +12,7 @@
         '/': Document,
         '/open': OpenDocument,
         '/doc/:id': Document,
+        '/doc-title/:title': Document,
         '/new': NewDocument,
         '*': Document,
     }

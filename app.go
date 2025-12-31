@@ -128,6 +128,19 @@ func (a *App) OpenDocument(docId string) (DocumentDto, error) {
 	return doc, nil
 }
 
+func (a *App) OpenDocumentByTitle(title string) (DocumentDto, error) {
+	domainDoc, err := a.db.LoadDocumentByTitle(title)
+	if err != nil {
+		if errors.Is(err, db.ErrDocumentNotFound) {
+			return a.CreateNewDocument(title)
+		}
+		return DocumentDto{}, err
+	}
+
+	doc := ToDocumentDto(domainDoc)
+	return doc, nil
+}
+
 func (a *App) SearchDocuments(search string) ([]DocumentSummaryDto, error) {
 	// For simplicity, return all documents as search results
 	return a.GetDocumentList()

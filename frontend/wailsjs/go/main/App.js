@@ -18,6 +18,10 @@ export function OpenDocument(arg1) {
   return window['go']['main']['App']['OpenDocument'](arg1);
 }
 
+export function OpenDocumentByTitle(arg1) {
+  return window['go']['main']['App']['OpenDocumentByTitle'](arg1);
+}
+
 export function SaveDocument(arg1) {
   return window['go']['main']['App']['SaveDocument'](arg1);
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"errors"
 	"glog/domain"
+	"strings"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -16,10 +17,11 @@ import (
 var ErrDocumentNotFound = errors.New("document not found")
 
 type DocumentStore struct {
-	path            string
-	bolt            *bolt.DB
-	bucketDocs      []byte
-	bucketTimeIndex []byte
+	path             string
+	bolt             *bolt.DB
+	bucketDocs       []byte
+	bucketTimeIndex  []byte
+	bucketTitleIndex []byte
 }
 
 func NewDocumentStore(path string) (*DocumentStore, error) {
@@ -30,6 +32,7 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 
 	docsKey := []byte("documents")
 	timeIndexKey := []byte("time_index")
+	titleIndexKey := []byte("title_index")
 
 	err = db.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists(docsKey)
@@ -41,6 +44,12 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 		if err != nil {
 			return err
 		}
+
+		_, err = tx.CreateBucketIfNotExists(titleIndexKey)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 
@@ -50,10 +59,11 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 	}
 
 	return &DocumentStore{
-		bolt:            db,
-		path:            path,
-		bucketDocs:      docsKey,
-		bucketTimeIndex: timeIndexKey,
+		bolt:             db,
+		path:             path,
+		bucketDocs:       docsKey,
+		bucketTimeIndex:  timeIndexKey,
+		bucketTitleIndex: titleIndexKey,
 	}, nil
 }
 
@@ -105,6 +115,19 @@ func (store *DocumentStore) saveTimeIndex(tx *bolt.Tx, doc *domain.Document) err
 	return nil
 }
 
+func (store *DocumentStore) saveTitleIndex(tx *bolt.Tx, doc *domain.Document) error {
+	log.Printf("Saving title index: %v\n", doc)
+
+	bucket := tx.Bucket(store.bucketTitleIndex)
+	titleLower := strings.ToLower(doc.Title)
+	err := bucket.Put([]byte(titleLower), []byte(doc.ID.String()))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (store *DocumentStore) Save(doc *domain.Document) error {
 	return store.bolt.Update(func(tx *bolt.Tx) error {
 		err := store.saveDoc(tx, doc)
@@ -112,6 +135,11 @@ func (store *DocumentStore) Save(doc *domain.Document) error {
 			return err
 		}
 		err = store.saveTimeIndex(tx, doc)
+		if err != nil {
+			return err
+		}
+
+		err = store.saveTitleIndex(tx, doc)
 		if err != nil {
 			return err
 		}
@@ -204,6 +232,31 @@ func (store *DocumentStore) LoadDocumentByTime(date time.Time) (*domain.Document
 	err := store.bolt.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(store.bucketTimeIndex)
 		data := bucket.Get([]byte(date.UTC().Format(time.RFC3339)))
+		if data == nil {
+			return ErrDocumentNotFound
+		}
+
+		id, err := uuid.Parse(string(data))
+		if err != nil {
+			return err
+		}
+
+		docId = domain.DocumentID(id)
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return store.LoadDocument(docId)
+}
+
+func (store *DocumentStore) LoadDocumentByTitle(title string) (*domain.Document, error) {
+	var docId domain.DocumentID
+	err := store.bolt.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(store.bucketTitleIndex)
+		data := bucket.Get([]byte(strings.ToLower(title)))
 		if data == nil {
 			return ErrDocumentNotFound
 		}
