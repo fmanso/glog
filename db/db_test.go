@@ -179,3 +179,45 @@ func TestLoadDocumentByTime(t *testing.T) {
 		t.Errorf("Loaded document ID mismatch: got %v, want %v", got.ID, doc.ID)
 	}
 }
+
+func TestLoadDocumentByTitle(t *testing.T) {
+	store, err := NewDocumentStore("./testloadbytitle.db")
+	if err != nil {
+		t.Fatalf("Failed to create DocumentStore: %v", err)
+	}
+	defer func() {
+		err := store.Close()
+		if err != nil {
+			t.Errorf("Failed to close DocumentStore: %v", err)
+		}
+
+		err = os.Remove("./testloadbytitle.db")
+	}()
+
+	doc := &domain.Document{
+		ID:    domain.DocumentID(uuid.New()),
+		Title: "Unique Test Document Title",
+		Date:  time.Now().UTC(),
+		Blocks: []*domain.Block{
+			{
+				ID:      domain.BlockID(uuid.New()),
+				Content: "Test Content",
+				Indent:  0,
+			},
+		},
+	}
+
+	err = store.Save(doc)
+	if err != nil {
+		t.Fatalf("Failed to save document: %v", err)
+	}
+
+	got, err := store.LoadDocumentByTitle("Unique Test Document Title")
+	if err != nil {
+		t.Fatalf("Failed to load document by title: %v", err)
+	}
+
+	if got.ID != doc.ID {
+		t.Errorf("Loaded document ID mismatch: got %v, want %v", got.ID, doc.ID)
+	}
+}
