@@ -172,11 +172,13 @@
             if (!view) return;
             const next = e.relatedTarget;
             if (!(next instanceof Element)) {
+                flushSave();
                 requestEdit(null);
                 return;
             }
             if (view.dom.contains(next)) return;
             if (next.closest('main.block')) return;
+            flushSave();
             requestEdit(null);
         };
 
@@ -188,6 +190,7 @@
     onDestroy(() => {
         if (view) {
             if (handleBlur) view.dom.removeEventListener('focusout', handleBlur);
+            clearTimeout(saveTimeout);
             view.destroy();
         }
     });
@@ -206,6 +209,11 @@
         saveTimeout = setTimeout(() => {
             dispatch('save', {id: block.id});
         }, 100);
+    }
+
+    function flushSave() {
+        clearTimeout(saveTimeout);
+        dispatch('save', {id: block.id});
     }
 
     function replaceLinks(body: string): string {
