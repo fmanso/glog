@@ -73,7 +73,7 @@ func (a *App) LoadJournalToday() (DocumentDto, error) {
 	return DocumentDto{}, err
 }
 
-func (a *App) CreateNewDocument(title string) (DocumentDto, error) {
+func (a *App) createNewDocument(title string) (DocumentDto, error) {
 	doc := domain.Document{
 		ID:    domain.DocumentID(uuid.New()),
 		Title: title,
@@ -132,7 +132,7 @@ func (a *App) OpenDocumentByTitle(title string) (DocumentDto, error) {
 	domainDoc, err := a.db.LoadDocumentByTitle(title)
 	if err != nil {
 		if errors.Is(err, db.ErrDocumentNotFound) {
-			return a.CreateNewDocument(title)
+			return a.createNewDocument(title)
 		}
 		return DocumentDto{}, err
 	}

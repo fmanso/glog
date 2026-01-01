@@ -1,10 +1,10 @@
 <script lang="ts">
-    import { CreateNewDocument } from "../wailsjs/go/main/App";
+    import { OpenDocumentByTitle } from "../wailsjs/go/main/App";
 
     let title: string = "New Document";
 
     async function create() {
-        CreateNewDocument(title).then((dto) => {
+        OpenDocumentByTitle(title).then((dto) => {
             window.location.href = "#/doc/" + dto.id;
         });
     }
