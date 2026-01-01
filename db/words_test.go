@@ -49,6 +49,21 @@ func TestWordIndex_Search(t *testing.T) {
 	if len(results) == 0 {
 		t.Fatal("Expected to find at least one document, found none")
 	}
+
+	doc.Blocks[0].Content = "New Content"
+	err = store.Save(doc)
+	if err != nil {
+		t.Fatalf("Failed to update document: %v", err)
+	}
+
+	results, err = store.Search("test content")
+	if err != nil {
+		t.Fatalf("Failed to search for word after update: %v", err)
+	}
+
+	if len(results) != 0 {
+		t.Fatal("Expected to find none after update, found some")
+	}
 }
 
 func TestWordIndex_Search_NotFound(t *testing.T) {

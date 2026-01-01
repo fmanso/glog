@@ -77,10 +77,73 @@ func (wi *wordIndex) saveDocIndex(tx *bolt.Tx, doc *DocDb) error {
 	return nil
 }
 
-func (wi *wordIndex) saveWordIndex(tx *bolt.Tx, doc *DocDb) error {
-	words := getWords(doc)
-	wordsBucket := tx.Bucket(wi.bucketWordsIndex)
+func (wi *wordIndex) getDocIndex(tx *bolt.Tx, docID uuid.UUID) map[string]struct{} {
+	docsBucket := tx.Bucket(wi.bucketDocsIndex)
+	data := docsBucket.Get([]byte(docID.String()))
+	if data == nil {
+		return map[string]struct{}{}
+	}
+
+	var words []string
+	buf := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(buf)
+	err := dec.Decode(&words)
+	if err != nil {
+		return map[string]struct{}{}
+	}
+	wordSet := make(map[string]struct{})
 	for _, word := range words {
+		wordSet[word] = struct{}{}
+	}
+	return wordSet
+}
+
+func (wi *wordIndex) deleteWordsNotUsed(tx *bolt.Tx, doc *DocDb, newWords []string) error {
+	newWordsSet := make(map[string]struct{})
+	for _, word := range newWords {
+		newWordsSet[word] = struct{}{}
+	}
+
+	oldWordsSet := wi.getDocIndex(tx, doc.ID)
+
+	// Words in oldWordsSet but not in newWordsSet need to be deleted
+	var wordsToDelete []string
+	for word := range oldWordsSet {
+		if _, exists := newWordsSet[word]; !exists {
+			wordsToDelete = append(wordsToDelete, word)
+		}
+	}
+
+	wordsBucket := tx.Bucket(wi.bucketWordsIndex)
+	for _, word := range wordsToDelete {
+		existing := wordsBucket.Get([]byte(word))
+		docIds := decodeUUIDSet(existing)
+		delete(docIds, doc.ID)
+
+		log.Println("Removing document ID:", doc.ID, "from word index for word:", word)
+		data, err := encodeUUIDSet(docIds)
+		if err != nil {
+			return err
+		}
+
+		err = wordsBucket.Put([]byte(word), data)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (wi *wordIndex) saveWordIndex(tx *bolt.Tx, doc *DocDb) error {
+	newWordList := getWords(doc)
+	// First, remove words that are no longer associated with the document
+	err := wi.deleteWordsNotUsed(tx, doc, newWordList)
+	if err != nil {
+		return err
+	}
+
+	wordsBucket := tx.Bucket(wi.bucketWordsIndex)
+	for _, word := range newWordList {
 		existing := wordsBucket.Get([]byte(word))
 		docIds := decodeUUIDSet(existing)
 		docIds[doc.ID] = struct{}{}
