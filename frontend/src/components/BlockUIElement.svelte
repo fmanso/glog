@@ -9,12 +9,14 @@
     import {SearchDocuments} from "../../wailsjs/go/main/App";
     const dispatch = createEventDispatcher();
     export let block: main.BlockDto;
+    export let currentEditingId: string | null;
+    export let requestEdit: (id: string | null) => void;
 
     let editorContainer: HTMLDivElement;
     let view: EditorView;
 
     export async function focus() {
-        isEditing = true;
+        requestEdit(block.id);
         await tick();
         view?.focus();
     }
@@ -64,12 +66,35 @@
         view.dispatch(transaction);
     }
 
+    async function startEditingAndFocus() {
+        requestEdit(block.id);
+        await tick();
+        view?.focus();
+    }
+
+    function isOnLink(event: MouseEvent) {
+        const target = event.target as HTMLElement | null;
+        return !!target?.closest('a');
+    }
+
+    function handlePreviewMouseDown(event: MouseEvent) {
+        if (isOnLink(event)) return;
+        event.preventDefault();
+        startEditingAndFocus();
+    }
+
+    function handlePreviewDblClick(event: MouseEvent) {
+        if (isOnLink(event)) return;
+        event.preventDefault();
+        startEditingAndFocus();
+    }
+
     function handleArrowUp() {
-        // If caret is at the first line of the block, dispatch
         const state = view.state;
         const selection = state.selection.main;
         const line = state.doc.lineAt(selection.from);
         if (line.from === 0) {
+            requestEdit(block.id);
             dispatch('arrowUp', {id: block.id});
             return true;
         }
@@ -78,16 +103,16 @@
 
     function handleArrowDown() {
         const state = view.state;
-        // Document length is 0 move down
         if (state.doc.length === 0) {
+            requestEdit(block.id);
             dispatch('arrowDown', {id: block.id});
             return true;
         }
-        // If caret is at the last line of the block, dispatch
         const selection = state.selection.main;
         const line = state.doc.lineAt(selection.from);
         const lastLine = state.doc.lineAt(state.doc.length - 1);
         if (line.from === lastLine.from) {
+            requestEdit(block.id);
             dispatch('arrowDown', {id: block.id});
             return true;
         }
@@ -129,9 +154,12 @@
                     {key: "Backspace", run: () => { dispatch('backspace', {id: block.id}); return getCaretPosition() === 0;}},
                     {key: "ArrowUp", run: () => { return handleArrowUp(); } },
                     {key: "ArrowDown", run: () => { return handleArrowDown();} },
-                    {key: "Escape", run: () => { isEditing = false; return true; }},
+                    {key: "Escape", run: () => { requestEdit(null); return true; }},
                 ]),
                 EditorView.updateListener.of((update) => {
+                    if (update.focusChanged && view.hasFocus) {
+                        requestEdit(block.id);
+                    }
                     if (update.docChanged) {
                         block.content = update.state.doc.toString();
                         triggerDebouncedSave();
@@ -141,9 +169,12 @@
         });
 
         handleBlur = (e: FocusEvent) => {
-            if (!view.dom.contains(e.relatedTarget as Node)) {
-                isEditing = false;
-            }
+            if (!view) return;
+            const next = e.relatedTarget as Node;
+            if (next && view.dom.contains(next)) return;
+            // When moving to another block's editor, do not clear edit here; parent will set new currentEditingId
+            if (next && next.closest('main.block')) return;
+            requestEdit(null);
         };
 
         view.dom.addEventListener('focusout', handleBlur);
@@ -153,7 +184,7 @@
 
     onDestroy(() => {
         if (view) {
-            if (handleBlur) view.dom.removeEventListener('focusout', handleBlur, true);
+            if (handleBlur) view.dom.removeEventListener('focusout', handleBlur);
             view.destroy();
         }
     });
@@ -179,6 +210,8 @@
             return `<a href="#/doc-title/${p1}">${p1}</a>`;
         });
     }
+
+    $: isEditing = block.id === currentEditingId;
 </script>
 
 <main class="block" style="--indent-level: {block.indent}">
@@ -188,7 +221,9 @@
     </div>
 
     {#if !isEditing}
-        <div class="markdown-preview" on:dblclick={() => isEditing = true}>
+        <div class="markdown-preview"
+             on:mousedown={handlePreviewMouseDown}
+             on:dblclick={handlePreviewDblClick}>
             {@html markdownHtml}
         </div>
     {/if}

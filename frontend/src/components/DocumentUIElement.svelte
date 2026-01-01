@@ -1,11 +1,43 @@
 <script lang="ts">
-    import { tick } from 'svelte';
+    import { tick, onMount, onDestroy } from 'svelte';
     import { SaveDocument } from "../../wailsjs/go/main/App";
     import BlockUIElement from './BlockUIElement.svelte';
     import type { main } from '../../wailsjs/go/models';
     export let document: main.DocumentDto;
     let blockInstances: Record<string, BlockUIElement> = {};
+    let currentEditingId: string | null = null;
+    let containerEl: HTMLElement;
 
+    const setCurrentEditing = (id: string | null) => {
+        currentEditingId = id;
+    };
+
+    const focusBlock = async (id: string | null) => {
+        currentEditingId = id;
+        if (!id) return;
+        let retries = 3;
+        while (retries-- > 0) {
+            await tick();
+            const inst = blockInstances[id];
+            if (inst) {
+                await inst.focus();
+                return;
+            }
+        }
+    };
+
+    onMount(() => {
+        const handleOutsideMouseDown = (e: MouseEvent) => {
+            if (!containerEl) return;
+            if (!containerEl.contains(e.target as Node)) {
+                setCurrentEditing(null);
+            }
+        };
+        window.addEventListener('mousedown', handleOutsideMouseDown, true);
+        return () => {
+            window.removeEventListener('mousedown', handleOutsideMouseDown, true);
+        };
+    });
 
     function shiftTabHandler(event: CustomEvent) {
         console.log('shiftTabHandler', event);
@@ -88,8 +120,7 @@
         blockInstances[block.id].removeContentAfterCaret();
         document.blocks.splice(index + 1, 0, newBlock);
         document = document;
-        await tick();
-        blockInstances[newBlock.id].focus();
+        await focusBlock(newBlock.id);
         console.log(newBlock);
     }
 
@@ -131,13 +162,12 @@
         prevBlock.content += block.content;
         document.blocks.splice(index, 1);
         document = document;
-        await tick();
-        blockInstances[prevBlock.id].focus();
+        await focusBlock(prevBlock.id);
         blockInstances[prevBlock.id].setCaretPosition(futureCaretPosition);
         console.log(document.blocks[index - 1]);
     }
 
-    function arrowUpHandler(event: CustomEvent) {
+    async function arrowUpHandler(event: CustomEvent) {
         console.log('arrowUpHandler', event);
         let id = event.detail.id;
 
@@ -147,10 +177,10 @@
         }
 
         let prevBlock = document.blocks[index - 1];
-        blockInstances[prevBlock.id].focus();
+        await focusBlock(prevBlock.id);
     }
 
-    function arrowDownHandler(event: CustomEvent) {
+    async function arrowDownHandler(event: CustomEvent) {
         console.log('arrowDownHandler', event);
         let id = event.detail.id;
 
@@ -160,7 +190,7 @@
         }
 
         let nextBlock = document.blocks[index + 1];
-        blockInstances[nextBlock.id].focus();
+        await focusBlock(nextBlock.id);
     }
 
     async function saveDocument() {
@@ -169,10 +199,12 @@
     }
 </script>
 
-<main>
+<main bind:this={containerEl}>
     {#each document.blocks as blk (blk.id)}
         <BlockUIElement block={blk}
                         bind:this={blockInstances[blk.id]}
+                        currentEditingId={currentEditingId}
+                        requestEdit={setCurrentEditing}
                         on:tab={tabHandler}
                         on:shiftTab={shiftTabHandler}
                         on:enter={enterHandler}
