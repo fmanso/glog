@@ -145,6 +145,7 @@
             doc: block.content,
             parent: editorContainer,
             extensions: [
+                EditorView.lineWrapping,
                 autocompletion({override: [autocomplete]}),
                 keymap.of([
                     {key: "Tab", run: () => { dispatch('tab', {id: block.id}); return true; } },
