@@ -170,10 +170,13 @@
 
         handleBlur = (e: FocusEvent) => {
             if (!view) return;
-            const next = e.relatedTarget as Node;
-            if (next && view.dom.contains(next)) return;
-            // When moving to another block's editor, do not clear edit here; parent will set new currentEditingId
-            if (next && next.closest('main.block')) return;
+            const next = e.relatedTarget;
+            if (!(next instanceof Element)) {
+                requestEdit(null);
+                return;
+            }
+            if (view.dom.contains(next)) return;
+            if (next.closest('main.block')) return;
             requestEdit(null);
         };
 
