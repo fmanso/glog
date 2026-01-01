@@ -290,6 +290,27 @@ textarea:focus {
   display: none;
 }
 
+/* CodeMirror autocomplete dropdown (dark theme) */
+.block .cm-tooltip {
+  background: var(--panel-2);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.block .cm-tooltip-autocomplete ul {
+  max-height: 240px;
+}
+
+.block .cm-tooltip-autocomplete li {
+  color: var(--text);
+}
+
+.block .cm-tooltip-autocomplete li[aria-selected] {
+  background: var(--accent-weak);
+  color: var(--text);
+}
+
 .markdown-preview {
   width: 100%;
   background: var(--panel-2);

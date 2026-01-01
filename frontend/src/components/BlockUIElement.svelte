@@ -130,7 +130,6 @@
                 label: r.title,
                 type: "document",
                 apply: `${r.title}]]`,
-                info: r.id
             }));
 
         return {
