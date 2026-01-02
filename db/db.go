@@ -26,6 +26,7 @@ type DocumentStore struct {
 	bucketWordIndex          []byte
 	wordBlockIndex           *wordIndex
 	wordTitleIndex           *wordIndex
+	referencesIndex          *referencesIndex
 }
 
 func NewDocumentStore(path string) (*DocumentStore, error) {
@@ -86,6 +87,12 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 		return nil, err
 	}
 
+	referencesIndex, err := newReferencesIndex(db)
+	if err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+
 	return &DocumentStore{
 		bolt:             db,
 		path:             path,
@@ -94,6 +101,7 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 		bucketTitleIndex: titleIndexKey,
 		wordBlockIndex:   wordBlockIndex,
 		wordTitleIndex:   wordTitleIndex,
+		referencesIndex:  referencesIndex,
 	}, nil
 }
 
@@ -180,6 +188,11 @@ func (store *DocumentStore) Save(doc *domain.Document) error {
 		}
 
 		err = store.wordTitleIndex.save(tx, docDb)
+		if err != nil {
+			return err
+		}
+
+		err = store.referencesIndex.save(tx, docDb)
 		if err != nil {
 			return err
 		}
@@ -343,6 +356,20 @@ func (store *DocumentStore) Search(query string) ([]domain.DocumentID, error) {
 
 	if err != nil {
 		return nil, err
+	}
+
+	return resultIDs, nil
+}
+
+func (store *DocumentStore) GetReferences(title string) ([]domain.DocumentID, error) {
+	var resultIDs []domain.DocumentID
+	ids, err := store.referencesIndex.getReferences(title)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, id := range ids {
+		resultIDs = append(resultIDs, domain.DocumentID(id))
 	}
 
 	return resultIDs, nil
