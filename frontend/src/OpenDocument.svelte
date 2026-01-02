@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { GetDocumentList } from '../wailsjs/go/main/App'
+    import { GetDocumentList, SearchDocuments } from '../wailsjs/go/main/App'
     import { main } from '../wailsjs/go/models'
 
     let documents : main.DocumentSummaryDto[] = [];
@@ -11,6 +11,17 @@
         console.log(docs)
         documents = docs;
     });
+    
+    let searchQuery: string = '';
+
+    async function onSearch(query: string) {
+        documents = await SearchDocuments(query);
+    }
+
+    function handleInput(event: Event) {
+        const value = (event.target as HTMLInputElement).value;
+        onSearch(value);
+    }
 </script>
 
 <main class="page open-documents">
@@ -20,6 +31,10 @@
             <h1>Open a document</h1>
         </div>
     </header>
+
+    <section>
+        <input type="text" class="search-input" placeholder="Search documents..." bind:value={searchQuery} on:input={handleInput}/>
+    </section>
 
     <section class="card list-card">
         {#if documents.length > 0}

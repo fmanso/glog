@@ -142,6 +142,24 @@ func (a *App) OpenDocumentByTitle(title string) (DocumentDto, error) {
 }
 
 func (a *App) SearchDocuments(search string) ([]DocumentSummaryDto, error) {
-	// For simplicity, return all documents as search results
-	return a.GetDocumentList()
+	docIDs, err := a.db.Search(search)
+	if err != nil {
+		return nil, err
+	}
+
+	summaries := make([]DocumentSummaryDto, 0, len(docIDs))
+	for _, id := range docIDs {
+		domainDoc, err := a.db.LoadDocument(domain.DocumentID(id))
+		if err != nil {
+			return nil, err
+		}
+
+		summaries = append(summaries, DocumentSummaryDto{
+			Id:    domainDoc.ID.String(),
+			Title: domainDoc.Title,
+			Date:  domainDoc.Date.Format(time.RFC3339),
+		})
+	}
+
+	return summaries, nil
 }
