@@ -6,6 +6,10 @@ export function GetDocumentList() {
   return window['go']['main']['App']['GetDocumentList']();
 }
 
+export function GetReferences(arg1) {
+  return window['go']['main']['App']['GetReferences'](arg1);
+}
+
 export function LoadJournalToday() {
   return window['go']['main']['App']['LoadJournalToday']();
 }

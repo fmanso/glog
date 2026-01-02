@@ -3,6 +3,7 @@
     import { SaveDocument } from "../../wailsjs/go/main/App";
     import BlockUIElement from './BlockUIElement.svelte';
     import type { main } from '../../wailsjs/go/models';
+    import ReferencesUIElement from "./ReferencesUIElement.svelte";
     export let document: main.DocumentDto;
     let blockInstances: Record<string, BlockUIElement> = {};
     let currentEditingId: string | null = null;
@@ -214,6 +215,10 @@
                         on:save={saveDocument}
         />
     {/each}
+
+    {#if document }
+        <ReferencesUIElement bind:title={document.title}></ReferencesUIElement>
+    {/if}
 </main>
 
 <style>

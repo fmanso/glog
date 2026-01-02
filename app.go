@@ -163,3 +163,26 @@ func (a *App) SearchDocuments(search string) ([]DocumentSummaryDto, error) {
 
 	return summaries, nil
 }
+
+func (a *App) GetReferences(title string) ([]DocumentSummaryDto, error) {
+	docIDs, err := a.db.GetReferences(title)
+	if err != nil {
+		return nil, err
+	}
+
+	summaries := make([]DocumentSummaryDto, 0, len(docIDs))
+	for _, id := range docIDs {
+		domainDoc, err := a.db.LoadDocument(domain.DocumentID(id))
+		if err != nil {
+			return nil, err
+		}
+
+		summaries = append(summaries, DocumentSummaryDto{
+			Id:    domainDoc.ID.String(),
+			Title: domainDoc.Title,
+			Date:  domainDoc.Date.Format(time.RFC3339),
+		})
+	}
+
+	return summaries, nil
+}

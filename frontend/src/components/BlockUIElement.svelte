@@ -3,7 +3,7 @@
     import { EditorView, keymap } from '@codemirror/view';
     import type { main } from '../../wailsjs/go/models';
     import { createEventDispatcher } from "svelte";
-    import {autocompletion} from "@codemirror/autocomplete";
+    import {autocompletion, completionKeymap, startCompletion} from "@codemirror/autocomplete";
     import { marked } from 'marked';
     import DOMPurify from 'dompurify';
     import {SearchDocuments} from "../../wailsjs/go/main/App";
@@ -148,6 +148,7 @@
                 EditorView.lineWrapping,
                 autocompletion({override: [autocomplete]}),
                 keymap.of([
+                    ...completionKeymap,
                     {key: "Tab", run: () => { dispatch('tab', {id: block.id}); return true; } },
                     {key: "Shift-Tab", run: () => { dispatch('shiftTab', {id: block.id}); return true; } },
                     {key: "Enter", run: () => { dispatch('enter', {id: block.id}); return true; } },
@@ -163,6 +164,12 @@
                     if (update.docChanged) {
                         block.content = update.state.doc.toString();
                         triggerDebouncedSave();
+                        let inserted = "";
+                        update.changes.iterChanges((_, __, ___, ____, insert) => { inserted += insert.toString(); });
+                        const pos = view.state.selection.main.from;
+                        if (inserted.includes("[") && pos >= 2 && view.state.doc.sliceString(pos - 2, pos) === "[[") {
+                            startCompletion(view);
+                        }
                     }
                 })
             ],
