@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount, onDestroy, tick } from 'svelte';
+    import { replaceLinks } from './replaceLinks';
     import { EditorView, keymap } from '@codemirror/view';
     import type { main } from '../../wailsjs/go/models';
     import { createEventDispatcher } from "svelte";
@@ -221,12 +222,6 @@
     function flushSave() {
         clearTimeout(saveTimeout);
         dispatch('save', {id: block.id});
-    }
-
-    function replaceLinks(body: string): string {
-        return body.replace(/\[\[(.*?)\]\]/g, (match, p1) => {
-            return `<a href="#/doc-title/${p1}">${p1}</a>`;
-        });
     }
 
     $: isEditing = block.id === currentEditingId;

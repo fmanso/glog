@@ -4,7 +4,7 @@ import {main} from '../models';
 
 export function GetDocumentList():Promise<Array<main.DocumentSummaryDto>>;
 
-export function GetReferences(arg1:string):Promise<Array<main.DocumentSummaryDto>>;
+export function GetReferences(arg1:string):Promise<Array<main.DocumentReferenceDto>>;
 
 export function LoadJournalToday():Promise<main.DocumentDto>;
 

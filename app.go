@@ -5,6 +5,8 @@ import (
 	"errors"
 	"glog/db"
 	"glog/domain"
+	"log"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -164,25 +166,53 @@ func (a *App) SearchDocuments(search string) ([]DocumentSummaryDto, error) {
 	return summaries, nil
 }
 
-func (a *App) GetReferences(title string) ([]DocumentSummaryDto, error) {
+type DocumentReferenceDto struct {
+	Id     string
+	Title  string
+	Blocks []BlockReferenceDto
+}
+
+type BlockReferenceDto struct {
+	Id      string
+	Content string
+	Indent  int
+}
+
+func (a *App) GetReferences(title string) ([]DocumentReferenceDto, error) {
+	titleLower := strings.ToLower(title)
 	docIDs, err := a.db.GetReferences(title)
 	if err != nil {
 		return nil, err
 	}
 
-	summaries := make([]DocumentSummaryDto, 0, len(docIDs))
+	log.Println("Found references for title", title, ":", docIDs)
+
+	var references []DocumentReferenceDto
 	for _, id := range docIDs {
-		domainDoc, err := a.db.LoadDocument(domain.DocumentID(id))
+		domainDoc, err := a.db.LoadDocument(id)
 		if err != nil {
 			return nil, err
 		}
 
-		summaries = append(summaries, DocumentSummaryDto{
-			Id:    domainDoc.ID.String(),
-			Title: domainDoc.Title,
-			Date:  domainDoc.Date.Format(time.RFC3339),
+		var blocks []BlockReferenceDto
+		for i := 0; i < len(domainDoc.Blocks); i++ {
+			block := domainDoc.Blocks[i]
+			if strings.Contains(strings.ToLower(block.Content), titleLower) {
+				blocks = append(blocks, BlockReferenceDto{
+					Id:      block.ID.String(),
+					Content: block.Content,
+					Indent:  block.Indent,
+				})
+			}
+		}
+
+		references = append(references, DocumentReferenceDto{
+			Id:     domainDoc.ID.String(),
+			Title:  domainDoc.Title,
+			Blocks: blocks,
 		})
 	}
 
-	return summaries, nil
+	log.Println("Found references for title", title, ":", references)
+	return references, nil
 }
