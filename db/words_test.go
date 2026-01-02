@@ -64,6 +64,15 @@ func TestWordIndex_Search(t *testing.T) {
 	if len(results) != 0 {
 		t.Fatal("Expected to find none after update, found some")
 	}
+
+	results, err = store.Search("Document Title")
+	if err != nil {
+		t.Fatalf("Failed to search for title words: %v", err)
+	}
+
+	if len(results) == 0 {
+		t.Fatal("Expected to find at least one document by title, found none")
+	}
 }
 
 func TestWordIndex_Search_NotFound(t *testing.T) {

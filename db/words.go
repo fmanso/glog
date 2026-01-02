@@ -10,23 +10,23 @@ import (
 	"github.com/google/uuid"
 )
 
+type getWordsFunc func(doc *DocDb) []string
+
 type wordIndex struct {
 	db               *bolt.DB
 	bucketWordsIndex []byte
 	bucketDocsIndex  []byte
+	getWords         getWordsFunc
 }
 
-func newWordIndex(db *bolt.DB) (*wordIndex, error) {
-	wordsIndexKey := []byte("word_index")
-	docsIndexKey := []byte("doc_index")
-
+func newWordIndex(db *bolt.DB, wordsIndexKey string, docsIndexKey string, getWords getWordsFunc) (*wordIndex, error) {
 	err := db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists(wordsIndexKey)
+		_, err := tx.CreateBucketIfNotExists([]byte(wordsIndexKey))
 		if err != nil {
 			return err
 		}
 
-		_, err = tx.CreateBucketIfNotExists(docsIndexKey)
+		_, err = tx.CreateBucketIfNotExists([]byte(docsIndexKey))
 		if err != nil {
 			return err
 		}
@@ -40,8 +40,9 @@ func newWordIndex(db *bolt.DB) (*wordIndex, error) {
 
 	return &wordIndex{
 		db:               db,
-		bucketWordsIndex: wordsIndexKey,
-		bucketDocsIndex:  docsIndexKey,
+		bucketWordsIndex: []byte(wordsIndexKey),
+		bucketDocsIndex:  []byte(docsIndexKey),
+		getWords:         getWords,
 	}, nil
 }
 
@@ -60,7 +61,7 @@ func (wi *wordIndex) save(tx *bolt.Tx, doc *DocDb) error {
 }
 
 func (wi *wordIndex) saveDocIndex(tx *bolt.Tx, doc *DocDb) error {
-	words := getWords(doc)
+	words := wi.getWords(doc)
 	docsBucket := tx.Bucket(wi.bucketDocsIndex)
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
@@ -135,7 +136,7 @@ func (wi *wordIndex) deleteWordsNotUsed(tx *bolt.Tx, doc *DocDb, newWords []stri
 }
 
 func (wi *wordIndex) saveWordIndex(tx *bolt.Tx, doc *DocDb) error {
-	newWordList := getWords(doc)
+	newWordList := wi.getWords(doc)
 	// First, remove words that are no longer associated with the document
 	err := wi.deleteWordsNotUsed(tx, doc, newWordList)
 	if err != nil {
@@ -183,8 +184,8 @@ func encodeUUIDSet(docIDs map[uuid.UUID]struct{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// getWords extracts unique words from the document's blocks.
-func getWords(doc *DocDb) []string {
+// getWordsFromBlocks extracts unique words from the document's blocks.
+func getWordsFromBlocks(doc *DocDb) []string {
 	wordMap := map[string]struct{}{}
 
 	for _, block := range doc.Blocks {
@@ -202,6 +203,10 @@ func getWords(doc *DocDb) []string {
 		words = append(words, word)
 	}
 	return words
+}
+
+func getWordsFromTitle(doc *DocDb) []string {
+	return strings.Fields(strings.ToLower(doc.Title))
 }
 
 func (wi *wordIndex) Search(tx *bolt.Tx, query string) ([]uuid.UUID, error) {

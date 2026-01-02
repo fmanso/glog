@@ -24,7 +24,8 @@ type DocumentStore struct {
 	bucketTitleIndex         []byte
 	bucketTitleInvertedIndex []byte
 	bucketWordIndex          []byte
-	wordIndex                *wordIndex
+	wordBlockIndex           *wordIndex
+	wordTitleIndex           *wordIndex
 }
 
 func NewDocumentStore(path string) (*DocumentStore, error) {
@@ -73,7 +74,13 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 		return nil, err
 	}
 
-	wordIndex, err := newWordIndex(db)
+	wordBlockIndex, err := newWordIndex(db, "word_block_index", "doc_word_block_index", getWordsFromBlocks)
+	if err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+
+	wordTitleIndex, err := newWordIndex(db, "word_title_index", "doc_word_title_index", getWordsFromTitle)
 	if err != nil {
 		_ = db.Close()
 		return nil, err
@@ -85,7 +92,8 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 		bucketDocs:       docsKey,
 		bucketTimeIndex:  timeIndexKey,
 		bucketTitleIndex: titleIndexKey,
-		wordIndex:        wordIndex,
+		wordBlockIndex:   wordBlockIndex,
+		wordTitleIndex:   wordTitleIndex,
 	}, nil
 }
 
@@ -166,7 +174,16 @@ func (store *DocumentStore) Save(doc *domain.Document) error {
 			return err
 		}
 
-		err = store.wordIndex.save(tx, docDb)
+		err = store.wordBlockIndex.save(tx, docDb)
+		if err != nil {
+			return err
+		}
+
+		err = store.wordTitleIndex.save(tx, docDb)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 }
@@ -304,7 +321,16 @@ func (store *DocumentStore) LoadDocumentByTitle(title string) (*domain.Document,
 func (store *DocumentStore) Search(query string) ([]domain.DocumentID, error) {
 	var resultIDs []domain.DocumentID
 	err := store.bolt.View(func(tx *bolt.Tx) error {
-		ids, err := store.wordIndex.Search(tx, query)
+		ids, err := store.wordBlockIndex.Search(tx, query)
+		if err != nil {
+			return err
+		}
+
+		for _, id := range ids {
+			resultIDs = append(resultIDs, domain.DocumentID(id))
+		}
+
+		ids, err = store.wordTitleIndex.Search(tx, query)
 		if err != nil {
 			return err
 		}
