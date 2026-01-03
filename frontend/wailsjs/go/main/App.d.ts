@@ -8,6 +8,8 @@ export function GetReferences(arg1:string):Promise<Array<main.DocumentReferenceD
 
 export function LoadJournalToday():Promise<main.DocumentDto>;
 
+export function LoadJournals(arg1:string,arg2:string):Promise<Array<main.DocumentDto>>;
+
 export function OpenDocument(arg1:string):Promise<main.DocumentDto>;
 
 export function OpenDocumentByTitle(arg1:string):Promise<main.DocumentDto>;

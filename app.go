@@ -50,9 +50,11 @@ func (a *App) LoadJournalToday() (DocumentDto, error) {
 	t := time.Now().UTC()
 	t = time.Date(t.Year(), t.Month(), t.Day(), 6, 0, 0, 0, time.UTC)
 
-	doc, err := a.db.LoadDocumentByTime(t)
-	if err == nil {
-		return ToDocumentDto(doc), nil
+	from := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
+	to := from.Add(1 * time.Hour)
+	docs, err := a.db.LoadJournals(from, to)
+	if err == nil && docs != nil && len(docs) > 0 {
+		return ToDocumentDto(docs[0]), nil
 	}
 
 	if errors.Is(err, db.ErrDocumentNotFound) {
@@ -73,6 +75,30 @@ func (a *App) LoadJournalToday() (DocumentDto, error) {
 	}
 
 	return DocumentDto{}, err
+}
+
+func (a *App) LoadJournals(from string, to string) ([]DocumentDto, error) {
+	fromTime, err := time.Parse(time.RFC3339, from)
+	if err != nil {
+		return nil, err
+	}
+
+	toTime, err := time.Parse(time.RFC3339, to)
+	if err != nil {
+		return nil, err
+	}
+
+	docs, err := a.db.LoadJournals(fromTime, toTime)
+	if err != nil {
+		return nil, err
+	}
+
+	docDtos := make([]DocumentDto, len(docs))
+	for i, doc := range docs {
+		docDtos[i] = ToDocumentDto(doc)
+	}
+
+	return docDtos, nil
 }
 
 func (a *App) createNewDocument(title string) (DocumentDto, error) {

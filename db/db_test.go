@@ -152,31 +152,52 @@ func TestLoadDocumentByTime(t *testing.T) {
 		err = os.Remove("./testloadbytime.db")
 	}()
 
-	doc := &domain.Document{
+	doc1 := &domain.Document{
 		ID:    domain.DocumentID(uuid.New()),
-		Title: "Test Document",
-		Date:  time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC),
+		Title: "Test Document 1",
+		Date:  time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		Blocks: []*domain.Block{
 			{
 				ID:      domain.BlockID(uuid.New()),
-				Content: "Test Content",
+				Content: "Test Content 1",
 				Indent:  0,
 			},
 		},
 	}
 
-	err = store.Save(doc)
+	err = store.Save(doc1)
 	if err != nil {
 		t.Fatalf("Failed to save document: %v", err)
 	}
 
-	got, err := store.LoadDocumentByTime(time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC))
+	doc2 := &domain.Document{
+		ID:    domain.DocumentID(uuid.New()),
+		Title: "Test Document 2",
+		Date:  time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
+		Blocks: []*domain.Block{
+			{
+				ID:      domain.BlockID(uuid.New()),
+				Content: "Test Content 2",
+				Indent:  0,
+			},
+		},
+	}
+
+	err = store.Save(doc2)
+	if err != nil {
+		t.Fatalf("Failed to save document: %v", err)
+	}
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC)
+
+	docs, err := store.LoadJournals(from, to)
 	if err != nil {
 		t.Fatalf("Failed to load document by time: %v", err)
 	}
 
-	if got.ID != doc.ID {
-		t.Errorf("Loaded document ID mismatch: got %v, want %v", got.ID, doc.ID)
+	if len(docs) != 2 {
+		t.Errorf("Loaded documents length mismatch: got %v, want %v", len(docs), 2)
 	}
 }
 

@@ -201,38 +201,48 @@ func (store *DocumentStore) Save(doc *domain.Document) error {
 	})
 }
 
-func (store *DocumentStore) LoadDocument(id domain.DocumentID) (*domain.Document, error) {
+func (store *DocumentStore) loadDocument(tx *bolt.Tx, id domain.DocumentID) (*domain.Document, error) {
 	var doc domain.Document
-	err := store.bolt.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket(store.bucketDocs)
-		data := bucket.Get([]byte(id.String()))
-		if data == nil {
-			return ErrDocumentNotFound
-		}
+	bucket := tx.Bucket(store.bucketDocs)
+	data := bucket.Get([]byte(id.String()))
+	if data == nil {
+		return nil, ErrDocumentNotFound
+	}
 
-		// Deserialize DocDb
-		var docDb DocDb
-		buf := bytes.NewBuffer(data)
-		dec := gob.NewDecoder(buf)
-		err := dec.Decode(&docDb)
+	// Deserialize DocDb
+	var docDb DocDb
+	buf := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(buf)
+	err := dec.Decode(&docDb)
+	if err != nil {
+		return nil, err
+	}
+
+	// Populate domain.Document
+	doc.ID = domain.DocumentID(docDb.ID)
+	doc.Title = docDb.Title
+	doc.Date, _ = time.Parse(time.RFC3339, docDb.Date)
+	doc.Blocks = make([]*domain.Block, len(docDb.Blocks))
+
+	for i, blockDb := range docDb.Blocks {
+		doc.Blocks[i] = &domain.Block{
+			ID:      domain.BlockID(blockDb.ID),
+			Content: blockDb.Content,
+			Indent:  blockDb.Ident,
+		}
+	}
+
+	return &doc, nil
+}
+
+func (store *DocumentStore) LoadDocument(id domain.DocumentID) (*domain.Document, error) {
+	var doc *domain.Document
+	err := store.bolt.View(func(tx *bolt.Tx) error {
+		d, err := store.loadDocument(tx, id)
 		if err != nil {
 			return err
 		}
-
-		// Populate domain.Document
-		doc.ID = domain.DocumentID(docDb.ID)
-		doc.Title = docDb.Title
-		doc.Date, _ = time.Parse(time.RFC3339, docDb.Date)
-		doc.Blocks = make([]*domain.Block, len(docDb.Blocks))
-
-		for i, blockDb := range docDb.Blocks {
-			doc.Blocks[i] = &domain.Block{
-				ID:      domain.BlockID(blockDb.ID),
-				Content: blockDb.Content,
-				Indent:  blockDb.Ident,
-			}
-		}
-
+		doc = d
 		return nil
 	})
 
@@ -240,7 +250,7 @@ func (store *DocumentStore) LoadDocument(id domain.DocumentID) (*domain.Document
 		return nil, err
 	}
 
-	return &doc, nil
+	return doc, nil
 }
 
 type DocumentSummary struct {
@@ -281,21 +291,37 @@ func (store *DocumentStore) ListDocuments() ([]DocumentSummary, error) {
 	return summaries, nil
 }
 
-func (store *DocumentStore) LoadDocumentByTime(date time.Time) (*domain.Document, error) {
-	var docId domain.DocumentID
+func (store *DocumentStore) LoadJournals(from time.Time, to time.Time) ([]*domain.Document, error) {
+	var docs []*domain.Document
 	err := store.bolt.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(store.bucketTimeIndex)
-		data := bucket.Get([]byte(date.UTC().Format(time.RFC3339)))
-		if data == nil {
-			return ErrDocumentNotFound
+		// Start from 'from' setting hours, minutes, seconds, nanoseconds to zero
+		current := time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, time.UTC)
+		end := time.Date(to.Year(), to.Month(), to.Day(), 0, 0, 0, 0, time.UTC)
+
+		for !current.After(end) {
+			data := bucket.Get([]byte(current.Format(time.RFC3339)))
+			if data != nil {
+				id, err := uuid.Parse(string(data))
+				if err != nil {
+					return err
+				}
+
+				d, err := store.loadDocument(tx, domain.DocumentID(id))
+				if err != nil {
+					if errors.Is(err, ErrDocumentNotFound) {
+						// Ignore missing document
+					} else {
+						return err
+					}
+				} else {
+					docs = append(docs, d)
+				}
+			}
+
+			current = current.Add(24 * time.Hour)
 		}
 
-		id, err := uuid.Parse(string(data))
-		if err != nil {
-			return err
-		}
-
-		docId = domain.DocumentID(id)
 		return nil
 	})
 
@@ -303,7 +329,7 @@ func (store *DocumentStore) LoadDocumentByTime(date time.Time) (*domain.Document
 		return nil, err
 	}
 
-	return store.LoadDocument(docId)
+	return docs, nil
 }
 
 func (store *DocumentStore) LoadDocumentByTitle(title string) (*domain.Document, error) {
