@@ -1,6 +1,8 @@
 package db
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"log"
 	"regexp"
@@ -13,18 +15,24 @@ import (
 var referenceRegex = regexp.MustCompile(`\[\[([^\[\]]+)\]\]`)
 
 type referencesIndex struct {
-	db             *bolt.DB
-	referenceIndex []byte
+	db                *bolt.DB
+	referenceIndex    []byte
+	docReferenceIndex []byte
 }
 
 func newReferencesIndex(db *bolt.DB) (*referencesIndex, error) {
 	referencesKey := []byte("references_index")
+	docReferenceKey := []byte("doc_reference_index")
 	err := db.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists(referencesKey)
 		if err != nil {
 			return err
 		}
 
+		_, err = tx.CreateBucketIfNotExists(docReferenceKey)
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 
@@ -33,14 +41,91 @@ func newReferencesIndex(db *bolt.DB) (*referencesIndex, error) {
 	}
 
 	return &referencesIndex{
-		db:             db,
-		referenceIndex: referencesKey,
+		db:                db,
+		referenceIndex:    referencesKey,
+		docReferenceIndex: docReferenceKey,
 	}, nil
+}
+
+func (ri *referencesIndex) updateInvertedIndex(tx *bolt.Tx, doc *DocDb, newReferences []string) error {
+	log.Printf("Deleting old references for document ID: %s, Title: %s, newReferences: %v", doc.ID, doc.Title, newReferences)
+	bucket := tx.Bucket(ri.docReferenceIndex)
+	if bucket == nil {
+		return fmt.Errorf("document reference index not found for document ID: %s", doc.ID)
+	}
+
+	data := bucket.Get([]byte(doc.ID.String()))
+	var oldTitles map[string]struct{}
+	buf := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(buf)
+	err := dec.Decode(&oldTitles)
+	if err != nil {
+		oldTitles = map[string]struct{}{}
+	}
+
+	newTitlesSet := make(map[string]struct{})
+	for _, title := range newReferences {
+		newTitlesSet[strings.ToLower(title)] = struct{}{}
+	}
+
+	log.Printf("newTitlesSet: %v", newTitlesSet)
+	for oldTitle := range oldTitles {
+		log.Printf("Checking old title: %s for document ID: %s", oldTitle, doc.ID)
+		if _, exists := newTitlesSet[oldTitle]; exists {
+			continue
+		}
+
+		err = ri.deleteDocFromReferences(tx, oldTitle, doc.ID)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Save the new set of referenced titles for the document
+	var bufNew bytes.Buffer
+	enc := gob.NewEncoder(&bufNew)
+	err = enc.Encode(newTitlesSet)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Saving new referenced titles for document ID: %s, Titles: %v", doc.ID, newReferences)
+	err = bucket.Put([]byte(doc.ID.String()), bufNew.Bytes())
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ri *referencesIndex) deleteDocFromReferences(tx *bolt.Tx, title string, docID uuid.UUID) error {
+	log.Printf("Deleting old references for document ID: %s, Title: %s", docID, title)
+	bucket := tx.Bucket(ri.referenceIndex)
+
+	data := bucket.Get([]byte(title))
+	if data == nil {
+		return nil
+	}
+
+	ids := decodeUUIDSet(data)
+	delete(ids, docID)
+	encoded, err := encodeUUIDSet(ids)
+	if err != nil {
+		return err
+	}
+
+	log.Println("Deleting document ID:", docID, "from reference index for title:", title)
+	return bucket.Put([]byte(title), encoded)
 }
 
 func (ri *referencesIndex) save(tx *bolt.Tx, doc *DocDb) error {
 	log.Printf("Updating references index for document ID: %s, Title: %s", doc.ID, doc.Title)
 	referencedTitles := getReferencedTitles(doc)
+
+	err := ri.updateInvertedIndex(tx, doc, referencedTitles)
+	if err != nil {
+		return fmt.Errorf("error deleting references index for document ID: %s, Title: %s", doc.ID, doc.Title)
+	}
 
 	log.Printf("Document ID: %s references titles: %v", doc.ID, referencedTitles)
 	bucket := tx.Bucket(ri.referenceIndex)
