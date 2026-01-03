@@ -121,7 +121,8 @@
     }
 
     async function autocomplete(context) {
-        let word = context.matchBefore(/\[\[\w*/);
+        // Match `[[` plus any following characters up to a closing bracket so we trigger even with no trailing word
+        let word = context.matchBefore(/\[\[[^\]]*/);
         if (!word || (word.from === word.to && !context.explicit)) return null;
 
         let results = await SearchDocuments(word.text.slice(2));

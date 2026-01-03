@@ -23,8 +23,8 @@
                 replaceLinks(content ?? ""), { async: false }) as string)
 </script>
 
+{#if references?.length}
 <main class="references-panel" aria-label="Document references">
-    {#if references?.length}
         <div class="references-header">
             <h3>References</h3>
             <p class="references-hint">Snippets below come from other documents that mention this one.</p>
@@ -48,8 +48,8 @@
                 {/if}
             </div>
         {/each}
-    {/if}
 </main>
+{/if}
 
 <style>
     .references-panel {
