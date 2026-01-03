@@ -296,8 +296,8 @@ func (store *DocumentStore) LoadJournals(from time.Time, to time.Time) ([]*domai
 	err := store.bolt.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(store.bucketTimeIndex)
 		// Start from 'from' setting hours, minutes, seconds, nanoseconds to zero
-		current := time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, time.UTC)
-		end := time.Date(to.Year(), to.Month(), to.Day(), 0, 0, 0, 0, time.UTC)
+		current := time.Date(from.Year(), from.Month(), from.Day(), 6, 0, 0, 0, time.UTC)
+		end := time.Date(to.Year(), to.Month(), to.Day(), 6, 0, 0, 0, time.UTC)
 
 		for !current.After(end) {
 			data := bucket.Get([]byte(current.Format(time.RFC3339)))

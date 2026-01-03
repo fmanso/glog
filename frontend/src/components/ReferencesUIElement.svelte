@@ -48,8 +48,6 @@
                 {/if}
             </div>
         {/each}
-    {:else}
-        <div class="references-empty">No references yet.</div>
     {/if}
 </main>
 

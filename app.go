@@ -57,24 +57,20 @@ func (a *App) LoadJournalToday() (DocumentDto, error) {
 		return ToDocumentDto(docs[0]), nil
 	}
 
-	if errors.Is(err, db.ErrDocumentNotFound) {
-		// Create title based on date (e.g., "Monday, January 2, 2006")
-		title := t.Format("Monday, January 2, 2006")
-		return DocumentDto{
-			Id:    uuid.NewString(),
-			Title: title,
-			Date:  t.Format(time.RFC3339),
-			Blocks: []BlockDto{
-				{
-					Id:      uuid.NewString(),
-					Content: "",
-					Indent:  0,
-				},
+	// Create title based on date (e.g., "Monday, January 2, 2006")
+	title := t.Format("Monday, January 2, 2006")
+	return DocumentDto{
+		Id:    uuid.NewString(),
+		Title: title,
+		Date:  t.Format(time.RFC3339),
+		Blocks: []BlockDto{
+			{
+				Id:      uuid.NewString(),
+				Content: "",
+				Indent:  0,
 			},
-		}, nil
-	}
-
-	return DocumentDto{}, err
+		},
+	}, nil
 }
 
 func (a *App) LoadJournals(from string, to string) ([]DocumentDto, error) {

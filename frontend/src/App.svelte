@@ -4,17 +4,18 @@
     import Document from './Document.svelte';
     import OpenDocument from './OpenDocument.svelte';
     import NewDocument from "./NewDocument.svelte";
+    import Home from "./Home.svelte";
 
     onMount(async () => {
     });
 
     const routes = {
-        '/': Document,
+        '/': Home,
         '/open': OpenDocument,
         '/doc/:id': Document,
         '/doc-title/:title': Document,
         '/new': NewDocument,
-        '*': Document,
+        '*': Home,
     }
 </script>
 
