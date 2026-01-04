@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"log"
+	"regexp"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -15,6 +17,8 @@ type scheduledTasks struct {
 	scheduledIndex         []byte
 	scheduledInvertedIndex []byte
 }
+
+var scheduledRegex = regexp.MustCompile(`/scheduled (\d{4}-\d{2}-\d{2})`)
 
 func newScheduledTasks(db *bolt.DB) (*scheduledTasks, error) {
 	scheduledIndexKey := []byte("scheduled_index")
@@ -42,6 +46,39 @@ func newScheduledTasks(db *bolt.DB) (*scheduledTasks, error) {
 		scheduledIndex:         scheduledIndexKey,
 		scheduledInvertedIndex: scheduledInvertedIndexKey,
 	}, nil
+}
+
+func (s *scheduledTasks) save(tx *bolt.Tx, doc *DocDb) error {
+	// Search in each block for ocurrences of scheduled dates in the format /scheduled YYYY-MM-DD
+	for _, block := range doc.Blocks {
+		scheduledDates := extractScheduledDates(block.Content)
+		log.Printf("Found scheduled dates in document ID: %s, Title: %s, Block ID: %s, Dates: %v", doc.ID, doc.Title, block.ID, scheduledDates)
+		for _, date := range scheduledDates {
+			log.Printf("Scheduling task for document ID: %s, Title: %s, Block ID: %s, Date: %s", doc.ID, doc.Title, block.ID, date.Format("2006-01-02"))
+			err := s.scheduleTask(tx, date, doc.ID, block.ID)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func extractScheduledDates(content string) []time.Time {
+	matches := scheduledRegex.FindAllStringSubmatch(content, -1)
+	var dates []time.Time
+	for _, match := range matches {
+		if len(match) < 2 {
+			continue
+		}
+		dateStr := match[1]
+		date, err := time.Parse("2006-01-02", dateStr)
+		if err == nil {
+			dates = append(dates, date)
+		}
+	}
+	return dates
 }
 
 func (s *scheduledTasks) scheduleTask(tx *bolt.Tx, date time.Time, docID uuid.UUID, blockID uuid.UUID) error {

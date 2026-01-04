@@ -87,3 +87,12 @@ func ToDocumentSummaryDto(summary db.DocumentSummary) DocumentSummaryDto {
 		Date:  summary.Date.Format(time.RFC3339),
 	}
 }
+
+type ScheduledTaskDto struct {
+	Id          string `json:"id"`
+	Description string `json:"description"`
+	DueDate     string `json:"due_date"` // RFC 3339 format
+	Title       string `json:"title"`
+	BlockId     string `json:"block_id"`
+	DocId       string `json:"doc_id"`
+}

@@ -3,6 +3,7 @@
   import {LoadJournals, LoadJournalToday} from "../wailsjs/go/main/App";
   import {main} from "../wailsjs/go/models";
   import DocumentUIElement from "./components/DocumentUIElement.svelte";
+  import ScheduledTasksUIElement from "./components/ScheduledTasksUIElement.svelte";
 
   let items: main.DocumentDto[] = [];
 let page = 0;
@@ -93,6 +94,7 @@ onMount(() => {
       <section class="card blocks-card">
         {#if document}
           <DocumentUIElement document={document}></DocumentUIElement>
+          <ScheduledTasksUIElement></ScheduledTasksUIElement>
         {:else}
           <div class="empty-state">Loading…</div>
         {/if}

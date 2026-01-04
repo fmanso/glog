@@ -118,6 +118,45 @@ export namespace main {
 	        this.date = source["date"];
 	    }
 	}
+	export class ScheduledTaskDto {
+	    id: string;
+	    description: string;
+	    due_date: string;
+	    title: string;
+	    block_id: string;
+	    doc_id: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ScheduledTaskDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.description = source["description"];
+	        this.due_date = source["due_date"];
+	        this.title = source["title"];
+	        this.block_id = source["block_id"];
+	        this.doc_id = source["doc_id"];
+	    }
+	}
+
+}
+
+export namespace time {
+	
+	export class Time {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new Time(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
 
 }
 

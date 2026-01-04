@@ -155,7 +155,7 @@ func TestLoadDocumentByTime(t *testing.T) {
 	doc1 := &domain.Document{
 		ID:    domain.DocumentID(uuid.New()),
 		Title: "Test Document 1",
-		Date:  time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		Date:  time.Date(2024, 1, 1, 6, 0, 0, 0, time.UTC),
 		Blocks: []*domain.Block{
 			{
 				ID:      domain.BlockID(uuid.New()),
@@ -173,7 +173,7 @@ func TestLoadDocumentByTime(t *testing.T) {
 	doc2 := &domain.Document{
 		ID:    domain.DocumentID(uuid.New()),
 		Title: "Test Document 2",
-		Date:  time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
+		Date:  time.Date(2024, 1, 2, 6, 0, 0, 0, time.UTC),
 		Blocks: []*domain.Block{
 			{
 				ID:      domain.BlockID(uuid.New()),
@@ -240,5 +240,55 @@ func TestLoadDocumentByTitle(t *testing.T) {
 
 	if got.ID != doc.ID {
 		t.Errorf("Loaded document ID mismatch: got %v, want %v", got.ID, doc.ID)
+	}
+}
+
+func TestScheduledTasks(t *testing.T) {
+	store, err := NewDocumentStore("./testscheduledtasks.db")
+	if err != nil {
+		t.Fatalf("Failed to create DocumentStore: %v", err)
+	}
+	defer func() {
+		err := store.Close()
+		if err != nil {
+			t.Errorf("Failed to close DocumentStore: %v", err)
+		}
+
+		err = os.Remove("./testscheduledtasks.db")
+	}()
+
+	doc := &domain.Document{
+		ID:    domain.DocumentID(uuid.New()),
+		Title: "Unique Test Document Title",
+		Date:  time.Now().UTC(),
+		Blocks: []*domain.Block{
+			{
+				ID:      domain.BlockID(uuid.New()),
+				Content: "Test Content /scheduled 2024-12-31",
+				Indent:  0,
+			},
+		},
+	}
+
+	err = store.Save(doc)
+	if err != nil {
+		t.Fatalf("Failed to save document: %v", err)
+	}
+
+	got, err := store.GetScheduledTasks(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("Failed to load scheduled tasks: %v", err)
+	}
+
+	if len(got) != 1 {
+		t.Fatalf("Expected 1 scheduled task, got %v", len(got))
+	}
+
+	if got[0].DocID != doc.ID {
+		t.Errorf("Scheduled task DocID mismatch: got %v, want %v", got[0].DocID, doc.ID)
+	}
+	
+	if got[0].BlockID != doc.Blocks[0].ID {
+		t.Errorf("Scheduled task BlockID mismatch: got %v, want %v", got[0].BlockID, doc.Blocks[0].ID)
 	}
 }

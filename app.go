@@ -252,3 +252,38 @@ func (a *App) ScheduleTask(date time.Time, docId string, blockId string) error {
 
 	return a.db.ScheduleTask(date, domain.DocumentID(docUUID), domain.BlockID(blockUUID))
 }
+
+func (a *App) GetScheduledTasks() ([]ScheduledTaskDto, error) {
+	scheduleTasks, err := a.db.GetScheduledTasks(time.Now().UTC())
+	if err != nil {
+		return nil, err
+	}
+
+	var scheduledTaskDtos []ScheduledTaskDto
+	for _, task := range scheduleTasks {
+		doc, err := a.db.LoadDocument(task.DocID)
+		if err != nil {
+			return nil, err
+		}
+
+		// Get the block content
+		var blockContent string
+		for _, block := range doc.Blocks {
+			if block.ID == task.BlockID {
+				blockContent = block.Content
+				break
+			}
+		}
+
+		scheduledTaskDtos = append(scheduledTaskDtos, ScheduledTaskDto{
+			Id:          task.ID.String(),
+			Title:       doc.Title,
+			DocId:       task.DocID.String(),
+			BlockId:     task.BlockID.String(),
+			Description: blockContent,
+			DueDate:     task.Time.Format(time.RFC3339),
+		})
+	}
+
+	return scheduledTaskDtos, nil
+}

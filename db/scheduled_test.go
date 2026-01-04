@@ -25,7 +25,7 @@ func TestScheduled_GetTasks(t *testing.T) {
 
 	docID := domain.DocumentID(uuid.New())
 	blockID := domain.BlockID(uuid.New())
-	err = store.ScheduleTask(time.Now().UTC().Add(24*time.Hour), docID, blockID)
+	err = store.ScheduleTask(time.Now().UTC(), docID, blockID)
 	if err != nil {
 		t.Fatalf("Failed to save document: %v", err)
 	}
@@ -35,8 +35,8 @@ func TestScheduled_GetTasks(t *testing.T) {
 		t.Fatalf("Failed to search for word: %v", err)
 	}
 
-	if len(results) == 1 {
-		t.Fatal("Expected to find at least one task, found none")
+	if len(results) != 1 {
+		t.Fatal("Expected to find one task, found none")
 	}
 
 	if results[0].DocID != docID {

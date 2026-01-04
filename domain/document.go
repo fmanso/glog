@@ -32,8 +32,8 @@ type Block struct {
 }
 
 type ScheduleTask struct {
-	ID        uuid.UUID
-	DocID     DocumentID
-	BlockID   BlockID
-	Scheduled time.Time
+	ID      uuid.UUID
+	DocID   DocumentID
+	BlockID BlockID
+	Time    time.Time
 }

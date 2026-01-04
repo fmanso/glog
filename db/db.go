@@ -205,6 +205,11 @@ func (store *DocumentStore) Save(doc *domain.Document) error {
 			return err
 		}
 
+		err = store.scheduledIndex.save(tx, docDb)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 }
@@ -429,10 +434,10 @@ func (store *DocumentStore) GetScheduledTasks(date time.Time) ([]domain.Schedule
 
 		for _, dbTask := range dbTasks {
 			tasks = append(tasks, domain.ScheduleTask{
-				ID:        dbTask.ID,
-				DocID:     domain.DocumentID(dbTask.DocDbID),
-				BlockID:   domain.BlockID(dbTask.BlockDbID),
-				Scheduled: scheduledTime,
+				ID:      dbTask.ID,
+				DocID:   domain.DocumentID(dbTask.DocDbID),
+				BlockID: domain.BlockID(dbTask.BlockDbID),
+				Time:    scheduledTime,
 			})
 		}
 

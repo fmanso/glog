@@ -10,6 +10,10 @@ export function GetReferences(arg1) {
   return window['go']['main']['App']['GetReferences'](arg1);
 }
 
+export function GetScheduledTasks() {
+  return window['go']['main']['App']['GetScheduledTasks']();
+}
+
 export function LoadJournalToday() {
   return window['go']['main']['App']['LoadJournalToday']();
 }
@@ -28,6 +32,10 @@ export function OpenDocumentByTitle(arg1) {
 
 export function SaveDocument(arg1) {
   return window['go']['main']['App']['SaveDocument'](arg1);
+}
+
+export function ScheduleTask(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ScheduleTask'](arg1, arg2, arg3);
 }
 
 export function SearchDocuments(arg1) {
