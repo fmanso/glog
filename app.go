@@ -238,3 +238,17 @@ func (a *App) GetReferences(title string) ([]DocumentReferenceDto, error) {
 	log.Println("Found references for title", title, ":", references)
 	return references, nil
 }
+
+func (a *App) ScheduleTask(date time.Time, docId string, blockId string) error {
+	docUUID, err := uuid.Parse(docId)
+	if err != nil {
+		return err
+	}
+
+	blockUUID, err := uuid.Parse(blockId)
+	if err != nil {
+		return err
+	}
+
+	return a.db.ScheduleTask(date, domain.DocumentID(docUUID), domain.BlockID(blockUUID))
+}

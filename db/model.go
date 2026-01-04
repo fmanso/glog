@@ -14,3 +14,9 @@ type BlockDb struct {
 	Content string
 	Ident   int
 }
+
+type ScheduleTaskDb struct {
+	ID        uuid.UUID
+	DocDbID   uuid.UUID
+	BlockDbID uuid.UUID
+}

@@ -30,3 +30,10 @@ type Block struct {
 	Content string
 	Indent  int
 }
+
+type ScheduleTask struct {
+	ID        uuid.UUID
+	DocID     DocumentID
+	BlockID   BlockID
+	Scheduled time.Time
+}

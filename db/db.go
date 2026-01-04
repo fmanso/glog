@@ -27,6 +27,7 @@ type DocumentStore struct {
 	wordBlockIndex           *wordIndex
 	wordTitleIndex           *wordIndex
 	referencesIndex          *referencesIndex
+	scheduledIndex           *scheduledTasks
 }
 
 func NewDocumentStore(path string) (*DocumentStore, error) {
@@ -93,6 +94,12 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 		return nil, err
 	}
 
+	scheduledIndex, err := newScheduledTasks(db)
+	if err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+
 	return &DocumentStore{
 		bolt:             db,
 		path:             path,
@@ -102,6 +109,7 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 		wordBlockIndex:   wordBlockIndex,
 		wordTitleIndex:   wordTitleIndex,
 		referencesIndex:  referencesIndex,
+		scheduledIndex:   scheduledIndex,
 	}, nil
 }
 
@@ -399,4 +407,41 @@ func (store *DocumentStore) GetReferences(title string) ([]domain.DocumentID, er
 	}
 
 	return resultIDs, nil
+}
+
+func (store *DocumentStore) ScheduleTask(date time.Time, docID domain.DocumentID, blockID domain.BlockID) error {
+	// Create new time to set hours, minutes, seconds, nanoseconds to zero
+	scheduledTime := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+	err := store.bolt.Update(func(tx *bolt.Tx) error {
+		return store.scheduledIndex.scheduleTask(tx, scheduledTime, uuid.UUID(docID), uuid.UUID(blockID))
+	})
+	return err
+}
+
+func (store *DocumentStore) GetScheduledTasks(date time.Time) ([]domain.ScheduleTask, error) {
+	var tasks []domain.ScheduleTask
+	scheduledTime := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+	err := store.bolt.View(func(tx *bolt.Tx) error {
+		dbTasks, err := store.scheduledIndex.getScheduledTasks(tx, scheduledTime)
+		if err != nil {
+			return err
+		}
+
+		for _, dbTask := range dbTasks {
+			tasks = append(tasks, domain.ScheduleTask{
+				ID:        dbTask.ID,
+				DocID:     domain.DocumentID(dbTask.DocDbID),
+				BlockID:   domain.BlockID(dbTask.BlockDbID),
+				Scheduled: scheduledTime,
+			})
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return tasks, nil
 }
