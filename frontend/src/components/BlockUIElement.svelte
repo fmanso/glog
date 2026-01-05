@@ -8,6 +8,10 @@
     import { marked } from 'marked';
     import DOMPurify from 'dompurify';
     import {SearchDocuments} from "../../wailsjs/go/main/App";
+    import flatpickr from "flatpickr";
+    import "flatpickr/dist/themes/dark.css";
+    import type { Instance } from "flatpickr/dist/types/instance";
+
     const dispatch = createEventDispatcher();
     export let block: main.BlockDto;
     export let currentEditingId: string | null;
@@ -15,6 +19,8 @@
 
     let editorContainer: HTMLDivElement;
     let view: EditorView;
+    let pickerAnchor: HTMLDivElement;
+    let pickerInstance: Instance | null = null;
 
     export async function focus() {
         requestEdit(block.id);
@@ -142,6 +148,66 @@
         };
     }
 
+    function checkForScheduledCommand() {
+        const state = view.state;
+        const selection = state.selection.main;
+
+        if (!selection.empty) {
+            destroyPicker();
+            return;
+        }
+
+        const line = state.doc.lineAt(selection.head);
+        const textBefore = line.text.slice(0, selection.head - line.from);
+
+        if (textBefore.endsWith("/scheduled ")) {
+            const coords = view.coordsAtPos(selection.head);
+            if (coords && editorContainer && pickerAnchor) {
+                const rect = editorContainer.getBoundingClientRect();
+
+                pickerAnchor.style.top = (coords.bottom - rect.top) + "px";
+                pickerAnchor.style.left = (coords.left - rect.left) + "px";
+
+                if (!pickerInstance) {
+                    pickerInstance = flatpickr(pickerAnchor, {
+                        defaultDate: new Date(),
+                        allowInput: true,
+                        locale: {
+                            firstDayOfWeek: 1 // Start week on Monday
+                        },
+                        onChange: (selectedDates, dateStr) => {
+                            insertDate(dateStr);
+                        }
+                    });
+                }
+                pickerInstance.open();
+            }
+        } else {
+            destroyPicker();
+        }
+    }
+
+    function destroyPicker() {
+        if (pickerInstance) {
+            pickerInstance.destroy();
+            pickerInstance = null;
+        }
+    }
+
+    function insertDate(dateStr: string) {
+        const state = view.state;
+        const selection = state.selection.main;
+
+        const transaction = state.update({
+            changes: { from: selection.head, insert: dateStr + " " },
+            selection: { anchor: selection.head + dateStr.length + 1 }
+        });
+
+        view.dispatch(transaction);
+        view.focus();
+        destroyPicker();
+    }
+
     onMount(() => {
         view = new EditorView({
             doc: block.content,
@@ -163,6 +229,9 @@
                     if (update.focusChanged && view.hasFocus) {
                         requestEdit(block.id);
                     }
+                    if (update.docChanged || update.selectionSet) {
+                        checkForScheduledCommand();
+                    }
                     if (update.docChanged) {
                         block.content = update.state.doc.toString();
                         triggerDebouncedSave();
@@ -178,8 +247,13 @@
         });
 
         handleBlur = (e: FocusEvent) => {
+            const next = e.relatedTarget as HTMLElement;
+            if (next && (next.classList.contains('flatpickr-calendar') || next.closest('.flatpickr-calendar'))) {
+                return;
+            }
+
             if (!view) return;
-            const next = e.relatedTarget;
+            // const next = e.relatedTarget; // Removed this line as it is redefined above
             if (!(next instanceof Element)) {
                 flushSave();
                 requestEdit(null);
@@ -202,6 +276,7 @@
             clearTimeout(saveTimeout);
             view.destroy();
         }
+        destroyPicker();
     });
 
     $: if (view && (block.content ?? "") !== view.state.doc.toString()) {
@@ -230,8 +305,9 @@
 
 <main class="block" style="--indent-level: {block.indent}">
     <div class="bullet">·</div>
-    <div class="editor-pane" style="display: {isEditing ? 'block' : 'none'}; width: 100%;">
+    <div class="editor-pane" style="display: {isEditing ? 'block' : 'none'}; width: 100%; position: relative;">
         <div bind:this={editorContainer}></div>
+        <div bind:this={pickerAnchor} style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;"></div>
     </div>
 
     {#if !isEditing}
@@ -263,5 +339,8 @@
     }
     main > div:last-child {
         flex-grow: 1;
+    }
+    :global(.flatpickr-calendar) {
+        z-index: 9999 !important;
     }
 </style>
