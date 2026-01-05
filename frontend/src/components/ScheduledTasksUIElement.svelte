@@ -14,7 +14,10 @@
     }
 
     function cleanDescription(description: string) {
-        return description.replace(/(?:\r\n|\r|\n)/g, '<br>');
+        const withoutSchedule = description
+            .replace(/\/?scheduled\s+\d{4}-\d{2}-\d{2}/gi, '')
+            .trim();
+        return withoutSchedule.replace(/(?:\r\n|\r|\n)/g, '<br>');
     }
 </script>
 
@@ -28,6 +31,11 @@
                         <a class="task-link" href={`#/doc/${task.doc_id}`}>{task.title}</a>
                     </div>
                     <div class="task-desc">{@html cleanDescription(task.description)}</div>
+                    {#if task.due_date}
+                        <div class="task-meta">
+                            <span class="pill">Scheduled {formatDate(task.due_date)}</span>
+                        </div>
+                    {/if}
                 </div>
             {/each}
         {:else}
@@ -90,6 +98,23 @@
         white-space: pre-line;
         padding-left: 1rem;
         border-left: 2px solid var(--border);
+    }
+
+    .task-meta {
+        padding-left: 1rem;
+        margin-top: 6px;
+    }
+
+    .pill {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 999px;
+        background: var(--accent-weak);
+        color: var(--accent-strong);
+        border: 1px solid var(--border);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
     }
 
     .empty {
