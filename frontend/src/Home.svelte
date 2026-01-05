@@ -75,6 +75,17 @@ onMount(() => {
     observer?.disconnect();
   };
 });
+
+function isToday(document: main.DocumentDto): boolean {
+    console.log("Checking if document date is today:", document.date);
+    const docDate = new Date(document.date);
+    const today = new Date();
+    const isIt = docDate.getFullYear() === today.getFullYear() &&
+           docDate.getMonth() === today.getMonth() &&
+           docDate.getDate() === today.getDate();
+    console.log(`Document date ${docDate.toDateString()} is today: ${isIt}`);
+    return isIt;
+}
 </script>
 
 <main class="home">
@@ -94,7 +105,9 @@ onMount(() => {
       <section class="card blocks-card">
         {#if document}
           <DocumentUIElement document={document}></DocumentUIElement>
-          <ScheduledTasksUIElement></ScheduledTasksUIElement>
+          {#if isToday(document)}
+            <ScheduledTasksUIElement></ScheduledTasksUIElement>
+          {/if}
         {:else}
           <div class="empty-state">Loading…</div>
         {/if}

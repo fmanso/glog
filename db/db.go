@@ -423,22 +423,25 @@ func (store *DocumentStore) ScheduleTask(date time.Time, docID domain.DocumentID
 	return err
 }
 
-func (store *DocumentStore) GetScheduledTasks(date time.Time) ([]domain.ScheduleTask, error) {
+// GetScheduledTasks retrieves scheduled tasks for a specific date and the next 'days' days.
+func (store *DocumentStore) GetScheduledTasks(date time.Time, days int) ([]domain.ScheduleTask, error) {
 	var tasks []domain.ScheduleTask
-	scheduledTime := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
 	err := store.bolt.View(func(tx *bolt.Tx) error {
-		dbTasks, err := store.scheduledIndex.getScheduledTasks(tx, scheduledTime)
-		if err != nil {
-			return err
-		}
+		for d := 0; d < days; d++ {
+			scheduledTime := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC).Add(time.Duration(d) * 24 * time.Hour)
+			dbTasks, err := store.scheduledIndex.getScheduledTasks(tx, scheduledTime)
+			if err != nil {
+				return err
+			}
 
-		for _, dbTask := range dbTasks {
-			tasks = append(tasks, domain.ScheduleTask{
-				ID:      dbTask.ID,
-				DocID:   domain.DocumentID(dbTask.DocDbID),
-				BlockID: domain.BlockID(dbTask.BlockDbID),
-				Time:    scheduledTime,
-			})
+			for _, dbTask := range dbTasks {
+				tasks = append(tasks, domain.ScheduleTask{
+					ID:      dbTask.ID,
+					DocID:   domain.DocumentID(dbTask.DocDbID),
+					BlockID: domain.BlockID(dbTask.BlockDbID),
+					Time:    scheduledTime,
+				})
+			}
 		}
 
 		return nil

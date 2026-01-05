@@ -254,7 +254,7 @@ func (a *App) ScheduleTask(date time.Time, docId string, blockId string) error {
 }
 
 func (a *App) GetScheduledTasks() ([]ScheduledTaskDto, error) {
-	scheduleTasks, err := a.db.GetScheduledTasks(time.Now().UTC())
+	scheduleTasks, err := a.db.GetScheduledTasks(time.Now().UTC(), 5)
 	if err != nil {
 		return nil, err
 	}
