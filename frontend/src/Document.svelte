@@ -25,9 +25,7 @@
 <main class="page document-view">
     <header class="page-header">
         <div>
-            <p class="eyebrow">Document</p>
             <h1>{document?.title ?? 'Loading…'}</h1>
-            <p>{document?.date}</p>
         </div>
     </header>
 

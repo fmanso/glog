@@ -27,12 +27,10 @@
 <main class="references-panel" aria-label="Document references">
         <div class="references-header">
             <h3>References</h3>
-            <p class="references-hint">Snippets below come from other documents that mention this one.</p>
         </div>
         {#each references as ref}
             <div class="reference-item">
                 <div class="reference-header">
-                    <span class="reference-label">Referenced in</span>
                     <a href={"#/doc/" + ref.Id}>{ref.Title}</a>
                 </div>
                 {#if ref.Blocks?.length}

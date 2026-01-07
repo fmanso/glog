@@ -29,6 +29,7 @@ html, body {
   font-size: 16px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  caret-color: var(--accent);
 }
 
 a {
@@ -94,6 +95,7 @@ textarea {
   font-family: inherit;
   font-size: 15px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  caret-color: var(--accent);
 }
 
 input[type="text"]:focus,
@@ -114,9 +116,9 @@ textarea:focus {
 
 .top-nav {
   display: flex;
-  gap: 16px;
+  gap: 10px;
   align-items: center;
-  padding: 16px 22px;
+  padding: 10px 14px;
   background: rgba(23, 26, 33, 0.9);
   border-bottom: 1px solid var(--border);
   position: sticky;
@@ -135,6 +137,58 @@ textarea:focus {
 .top-nav a:hover {
   color: var(--text);
   background: var(--accent-weak);
+}
+
+.top-nav .icon-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  color: var(--text-dim);
+  border: 1px solid transparent;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  position: relative;
+}
+
+.top-nav .icon-link::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: -32px;
+  transform: translateX(-50%);
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: var(--shadow);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.top-nav .icon-link:hover::after,
+.top-nav .icon-link:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, -2px);
+}
+
+.top-nav .icon {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  vector-effect: non-scaling-stroke;
+}
+
+.top-nav .icon path {
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .view-frame {
@@ -271,6 +325,7 @@ textarea:focus {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 6px 8px;
+  caret-color: var(--accent);
 }
 
 .block .cm-editor .cm-content {
@@ -290,7 +345,7 @@ textarea:focus {
   display: none;
 }
 
-/* CodeMirror autocomplete dropdown (dark theme) */
+ /* CodeMirror autocomplete dropdown (dark theme) */
 .block .cm-tooltip {
   background: var(--panel-2);
   border: 1px solid var(--border-strong);

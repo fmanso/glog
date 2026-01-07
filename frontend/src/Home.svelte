@@ -89,7 +89,6 @@ function isToday(document: main.DocumentDto): boolean {
 </script>
 
 <main class="home">
-  <h1>Home</h1>
   <section class="list">
     {#if items.length === 0 && !loading}
       <p class="empty">Nothing yet. Scroll will load once data exists.</p>

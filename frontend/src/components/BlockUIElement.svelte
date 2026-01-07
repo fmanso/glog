@@ -208,12 +208,19 @@
         destroyPicker();
     }
 
+    const caretTheme = EditorView.theme({
+        ".cm-content, .cm-content *": { caretColor: "var(--accent)" },
+        ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--accent)" },
+        ".cm-selectionBackground, .cm-content ::selection": { backgroundColor: "var(--accent-weak)" },
+    }, { dark: true });
+
     onMount(() => {
         view = new EditorView({
             doc: block.content,
             parent: editorContainer,
             extensions: [
                 EditorView.lineWrapping,
+                caretTheme,
                 autocompletion({override: [autocomplete]}),
                 keymap.of([
                     ...completionKeymap,
