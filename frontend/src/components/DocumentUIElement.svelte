@@ -200,7 +200,7 @@
     }
 </script>
 
-<main bind:this={containerEl}>
+<main class="document-container" bind:this={containerEl}>
     {#each document.blocks as blk (blk.id)}
         <BlockUIElement block={blk}
                         bind:this={blockInstances[blk.id]}
@@ -222,23 +222,6 @@
 </main>
 
 <style>
-    :global(:root) {
-        --indent-size-px: 20px;
-    }
-    .block {
-        display: flex;
-        align-items: flex-start;
-        gap: 10px;
-        margin-top: 4px;
-        margin-bottom: 4px;
-    }
-    .bullet {
-        width: var(--indent-size-px);
-        text-align: center;
-        user-select: none;
-        color: #888;
-    }
-    .editor-pane {
-        flex-grow: 1;
-    }
+    :global(:root) { --indent-size-px: 18px; }
+    .document-container { display: flex; flex-direction: column; gap: 4px; }
 </style>

@@ -51,56 +51,56 @@
 
 <style>
     .references-panel {
-        margin-top: 2rem;
-        padding: 1.25rem;
-        border: none;
+        margin-top: 24px;
+        padding: 16px 18px;
+        border: 1px solid var(--border);
         border-radius: var(--radius);
-        background: var(--panel);
+        background: var(--surface-1);
         box-shadow: var(--shadow);
     }
 
     .references-header {
         display: flex;
         align-items: baseline;
-        gap: 0.75rem;
-        margin-bottom: 0.5rem;
+        gap: 10px;
+        margin-bottom: 8px;
     }
 
     .references-header h3 {
         margin: 0;
         color: var(--text);
-        font-size: 1.05rem;
+        font-size: 16px;
         letter-spacing: 0.01em;
     }
 
     .references-hint {
         margin: 0;
         color: var(--text-dim);
-        font-size: 0.9rem;
+        font-size: 13px;
     }
 
     .reference-item {
-        border: none;
+        border: 1px solid var(--border);
         border-radius: 10px;
-        padding: 0.95rem 1rem;
-        margin-top: 0.75rem;
-        background: var(--panel-2);
+        padding: 12px 14px;
+        margin-top: 10px;
+        background: var(--surface-2);
         box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
     }
 
     .reference-header {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        margin-bottom: 0.35rem;
+        gap: 8px;
+        margin-bottom: 6px;
     }
 
     .reference-label {
-        padding: 0.25rem 0.5rem;
+        padding: 4px 8px;
         border-radius: 999px;
         background: var(--accent-weak);
         color: var(--accent-strong);
-        font-size: 0.75rem;
+        font-size: 12px;
         font-weight: 700;
         letter-spacing: 0.04em;
         text-transform: uppercase;
@@ -112,24 +112,21 @@
         text-decoration: none;
     }
 
-    .reference-header a:hover {
-        color: var(--accent);
-        text-decoration: underline;
-    }
+    .reference-header a:hover { color: var(--accent); text-decoration: underline; }
 
     .reference-blocks {
         display: flex;
         flex-direction: column;
-        gap: 0.5rem;
-        padding-left: 0.55rem;
+        gap: 8px;
+        padding-left: 10px;
         border-left: 1px dashed rgba(255, 255, 255, 0.08);
     }
 
     .reference-block {
-        padding: 0.6rem 0.75rem;
+        padding: 10px 12px;
         background: rgba(255, 255, 255, 0.02);
         border-radius: 8px;
-        border: none;
+        border: 1px solid var(--border);
         color: var(--text);
         line-height: 1.45;
         font-size: 0.95rem;
@@ -146,6 +143,6 @@
         margin: 0;
         color: var(--text-dim);
         text-align: center;
-        padding: 0.5rem 0;
+        padding: 8px 0;
     }
 </style>

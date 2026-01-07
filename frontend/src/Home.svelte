@@ -124,6 +124,3 @@ function isToday(document: main.DocumentDto): boolean {
     {/if}
   </section>
 </main>
-
-<style>
-</style>

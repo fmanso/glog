@@ -310,7 +310,7 @@
     $: isEditing = block.id === currentEditingId;
 </script>
 
-<main class="block" style="--indent-level: {block.indent}">
+<main class={`block ${isEditing ? 'block-editing' : ''}`} style={`--indent-level: ${block.indent}`}>
     <div class="bullet">·</div>
     <div class="editor-pane" style="display: {isEditing ? 'block' : 'none'}; width: 100%; position: relative;">
         <div bind:this={editorContainer}></div>
@@ -329,7 +329,7 @@
 
 <style>
     :global(:root) {
-        --indent-size-px: 20px;
+        --indent-size-px: 18px;
     }
     main {
         display: flex;
@@ -342,12 +342,10 @@
         width: var(--indent-size-px);
         text-align: center;
         user-select: none;
-        color: #888;
+        color: var(--text-dim);
     }
     main > div:last-child {
         flex-grow: 1;
     }
-    :global(.flatpickr-calendar) {
-        z-index: 9999 !important;
-    }
+    :global(.flatpickr-calendar) { z-index: 9999 !important; }
 </style>

@@ -50,7 +50,8 @@
         padding: 14px 16px;
         border: 1px solid var(--border);
         border-radius: 10px;
-        background: linear-gradient(180deg, rgba(23, 26, 33, 0.9), rgba(29, 33, 41, 0.9));
+        background: var(--surface-1);
+        box-shadow: var(--shadow);
     }
 
     .section-title {
@@ -61,38 +62,25 @@
         color: var(--text-dim);
     }
 
-    .tasks {
-        color: var(--text);
-    }
+    .tasks { color: var(--text); }
 
-    .task-item {
-        padding: 8px 0;
-    }
+    .task-item { padding: 10px 0; }
 
-    .task-item + .task-item {
-        border-top: 1px solid var(--border);
-    }
+    .task-item + .task-item { border-top: 1px solid var(--border); }
 
     .task-title {
         font-weight: 600;
-        margin: 0 0 0.25rem 0;
+        margin: 0 0 4px 0;
         color: var(--text);
         line-height: 1.25;
     }
 
-    .task-link {
-        color: var(--accent);
-        text-decoration: none;
-    }
-
-    .task-link:hover {
-        color: var(--accent-strong);
-        text-decoration: underline;
-    }
+    .task-link { color: var(--accent); text-decoration: none; }
+    .task-link:hover { color: var(--accent-strong); text-decoration: underline; }
 
     .task-desc {
         margin: 0;
-        color: #d8dee9;
+        color: var(--text-dim);
         font-size: 0.95rem;
         line-height: 1.4;
         white-space: pre-line;
@@ -100,10 +88,7 @@
         border-left: 2px solid var(--border);
     }
 
-    .task-meta {
-        padding-left: 1rem;
-        margin-top: 6px;
-    }
+    .task-meta { padding-left: 1rem; margin-top: 6px; }
 
     .pill {
         display: inline-block;
@@ -117,8 +102,5 @@
         letter-spacing: 0.01em;
     }
 
-    .empty {
-        margin: 4px 0 0 0;
-        color: var(--text-dim);
-    }
+    .empty { margin: 4px 0 0 0; color: var(--text-dim); }
 </style>
