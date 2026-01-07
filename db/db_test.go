@@ -275,7 +275,7 @@ func TestScheduledTasks(t *testing.T) {
 		t.Fatalf("Failed to save document: %v", err)
 	}
 
-	got, err := store.GetScheduledTasks(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC))
+	got, err := store.GetScheduledTasks(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC), 5)
 	if err != nil {
 		t.Fatalf("Failed to load scheduled tasks: %v", err)
 	}
@@ -287,7 +287,7 @@ func TestScheduledTasks(t *testing.T) {
 	if got[0].DocID != doc.ID {
 		t.Errorf("Scheduled task DocID mismatch: got %v, want %v", got[0].DocID, doc.ID)
 	}
-	
+
 	if got[0].BlockID != doc.Blocks[0].ID {
 		t.Errorf("Scheduled task BlockID mismatch: got %v, want %v", got[0].BlockID, doc.Blocks[0].ID)
 	}
