@@ -34,10 +34,6 @@ export function SaveDocument(arg1) {
   return window['go']['main']['App']['SaveDocument'](arg1);
 }
 
-export function ScheduleTask(arg1, arg2, arg3) {
-  return window['go']['main']['App']['ScheduleTask'](arg1, arg2, arg3);
-}
-
 export function SearchDocuments(arg1) {
   return window['go']['main']['App']['SearchDocuments'](arg1);
 }

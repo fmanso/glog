@@ -136,7 +136,6 @@ func (s *scheduledTasks) removeObsolete(tx *bolt.Tx, doc *DocDb) error {
 		}
 
 		log.Printf("Removing obsolete dates %v", oldDatesSet)
-
 		scheduledDates := extractScheduledDates(block.Content)
 		log.Printf("Current scheduled dates for document ID: %s, Title: %s, Block ID: %s, Dates: %v", doc.ID, doc.Title, block.ID, scheduledDates)
 		newDatesSet := make(map[string]struct{})
@@ -172,7 +171,7 @@ func (s *scheduledTasks) removeScheduledTask(tx *bolt.Tx, date time.Time, docID 
 	key := date.Format("2006-01-02")
 	values := bucket.Get([]byte(key))
 	if values == nil {
-		return nil // No tasks for this date
+		return fmt.Errorf("no scheduled tasks found for date: %s", key)
 	}
 
 	tasks, err := decodeScheduleTasksDb(values)
@@ -188,10 +187,7 @@ func (s *scheduledTasks) removeScheduledTask(tx *bolt.Tx, date time.Time, docID 
 		updatedTasks = append(updatedTasks, task)
 	}
 
-	if len(updatedTasks) == 0 {
-		return bucket.Delete([]byte(key))
-	}
-
+	log.Printf("removeScheduledTask: Updating scheduled tasks for date: %s, Remaining tasks: %d", key, len(updatedTasks))
 	encoded, err := encodeScheduleTaskDb(updatedTasks)
 	if err != nil {
 		return err
@@ -267,6 +263,12 @@ func (s *scheduledTasks) scheduleTask(tx *bolt.Tx, date time.Time, docID uuid.UU
 			return err
 		}
 
+		for _, task := range existingTasks {
+			if task.DocDbID == docID && task.BlockDbID == blockID {
+				return nil
+			}
+		}
+
 		existingTasks = append(existingTasks, newTask)
 
 		// Re-encode and store
@@ -275,6 +277,7 @@ func (s *scheduledTasks) scheduleTask(tx *bolt.Tx, date time.Time, docID uuid.UU
 			return err
 		}
 
+		log.Printf("scheduleTask: added scheduled task for date: %s, Total tasks: %d", key, len(existingTasks))
 		return bucket.Put([]byte(key), encoded)
 	}
 
@@ -286,6 +289,7 @@ func (s *scheduledTasks) scheduleTask(tx *bolt.Tx, date time.Time, docID uuid.UU
 		return err
 	}
 
+	log.Printf("scheduleTask: created first scheduled task for date: %s", key)
 	return bucket.Put([]byte(key), encoded)
 }
 
@@ -306,6 +310,7 @@ func (s *scheduledTasks) getScheduledTasks(tx *bolt.Tx, date time.Time) ([]Sched
 		return nil, err
 	}
 
+	log.Printf("getScheduledTasks: found %d scheduled tasks for date: %s", len(tasks), key)
 	return tasks, nil
 }
 

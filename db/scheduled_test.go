@@ -69,7 +69,7 @@ func TestScheduled_RemoveObsoleteTasks(t *testing.T) {
 		Blocks: []*domain.Block{
 			{
 				ID:      domain.BlockID(uuid.New()),
-				Content: "Test Content /scheduled 2024-12-31",
+				Content: "Test Content /scheduled 2025-01-07",
 				Indent:  0,
 			},
 		},
@@ -80,7 +80,7 @@ func TestScheduled_RemoveObsoleteTasks(t *testing.T) {
 		t.Fatalf("Failed to save document: %v", err)
 	}
 
-	tasks, err := store.GetScheduledTasks(time.Date(2024, 12, 29, 0, 0, 0, 0, time.UTC), 5)
+	tasks, err := store.GetScheduledTasks(time.Date(2025, 01, 07, 0, 0, 0, 0, time.UTC), 5)
 	if err != nil {
 		t.Fatalf("Failed to load scheduled tasks: %v", err)
 	}
@@ -89,13 +89,13 @@ func TestScheduled_RemoveObsoleteTasks(t *testing.T) {
 		t.Fatalf("Expected 1 scheduled tasks, got %v", len(tasks))
 	}
 
-	doc.Blocks[0].Content = "Test Content /scheduled 2025-12-31"
+	doc.Blocks[0].Content = "Test Content /scheduled 2025-01-0"
 	err = store.Save(doc)
 	if err != nil {
 		t.Fatalf("Failed to update document: %v", err)
 	}
 
-	tasks, err = store.GetScheduledTasks(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC), 5)
+	tasks, err = store.GetScheduledTasks(time.Date(2025, 01, 07, 0, 0, 0, 0, time.UTC), 5)
 	if err != nil {
 		t.Fatalf("Failed to load scheduled tasks: %v", err)
 	}
@@ -104,7 +104,13 @@ func TestScheduled_RemoveObsoleteTasks(t *testing.T) {
 		t.Fatalf("Expected 0 scheduled tasks for obsolete date, got %v", len(tasks))
 	}
 
-	tasks, err = store.GetScheduledTasks(time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC), 5)
+	doc.Blocks[0].Content = "Test Content /scheduled 2025-01-08"
+	err = store.Save(doc)
+	if err != nil {
+		t.Fatalf("Failed to update document: %v", err)
+	}
+
+	tasks, err = store.GetScheduledTasks(time.Date(2025, 01, 07, 0, 0, 0, 0, time.UTC), 5)
 	if err != nil {
 		t.Fatalf("Failed to load scheduled tasks: %v", err)
 	}
