@@ -47,11 +47,12 @@
 <style lang="css">
     .scheduled {
         margin-top: 12px;
-        padding: 14px 16px;
-        border: 1px solid var(--border);
+        padding: 10px 12px;
+        border: none;
         border-radius: 10px;
-        background: var(--surface-1);
-        box-shadow: var(--shadow);
+        /* Slightly lighter than app background */
+        background: rgba(255, 255, 255, 0.04);
+        box-shadow: none;
     }
 
     .section-title {
@@ -66,7 +67,7 @@
 
     .task-item { padding: 10px 0; }
 
-    .task-item + .task-item { border-top: 1px solid var(--border); }
+    .task-item + .task-item { border-top: none; }
 
     .task-title {
         font-weight: 600;
@@ -84,11 +85,11 @@
         font-size: 0.95rem;
         line-height: 1.4;
         white-space: pre-line;
-        padding-left: 1rem;
-        border-left: 2px solid var(--border);
+        padding-left: 0;
+        border-left: none;
     }
 
-    .task-meta { padding-left: 1rem; margin-top: 6px; }
+    .task-meta { padding-left: 0; margin-top: 6px; }
 
     .pill {
         display: inline-block;
@@ -96,7 +97,7 @@
         border-radius: 999px;
         background: var(--accent-weak);
         color: var(--accent-strong);
-        border: 1px solid var(--border);
+        border: none;
         font-size: 12px;
         font-weight: 600;
         letter-spacing: 0.01em;

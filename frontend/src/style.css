@@ -17,6 +17,8 @@
   --font: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   --indent-size-px: 18px;
+  /* Default so linters can resolve; individual blocks override via inline style */
+  --indent-level: 0;
 }
 
 * { box-sizing: border-box; }
@@ -228,23 +230,78 @@ label { color: var(--text-dim); font-size: 14px; }
 
 .blocks-card { padding: 12px 14px; }
 
-.list-card .list { display: flex; flex-direction: column; }
-
-.list-item {
-  display: flex;
-  justify-content: space-between;
-  padding: 12px 10px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  color: var(--text);
-  background: var(--surface-2);
-  transition: background 0.15s ease, border-color 0.15s ease;
+.document-view .blocks-card {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
 }
 
-.list-item + .list-item { margin-top: 6px; }
-.list-item:hover { background: var(--surface-3); border-color: var(--border-strong); }
-.list-title { font-weight: 600; }
-.list-meta { color: var(--text-dim); font-size: 13px; }
+.document-view .page-header { margin-bottom: 0; }
+.document-view.page { gap: 8px; }
+
+.document-view .block .cm-editor,
+.document-view .markdown-preview {
+  background: transparent;
+  border-color: transparent;
+}
+
+.document-view .block .cm-editor.cm-focused {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* --- Flat document view: render everything directly on app background --- */
+.document-view,
+.document-view .view-frame,
+.document-view .card,
+.document-view .blocks-card {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+/* Blocks shouldn't look like individual cards in document view */
+.document-view .block {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  /* sin padding ni márgenes: que se sienta como texto continuo */
+  padding: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  /* alinear bullet y texto correctamente */
+  align-items: baseline;
+  gap: 4px;
+}
+
+.document-view .block .bullet {
+  /* asegurar que el bullet no quede por encima */
+  margin-top: 0;
+  line-height: 1;
+}
+
+.document-view .markdown-preview {
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* Tighten vertical rhythm between blocks when flat */
+.document-view .block {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* --- Home: separator line between documents --- */
+.home .doc-separator {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 16px 0;
+  opacity: 1;
+}
 
 .empty-state { text-align: center; color: var(--text-dim); padding: 24px; }
 
@@ -263,11 +320,13 @@ label { color: var(--text-dim); font-size: 14px; }
 .block {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  /* Menos espacio entre bullet y texto */
+  gap: 4px;
   padding: 6px 8px;
   border-radius: 10px;
   border: 1px solid transparent;
-  margin-left: calc(var(--indent-level) * var(--indent-size-px));
+  /* Fallback seguro cuando --indent-level no está definido */
+  margin-left: calc(var(--indent-level, 0) * var(--indent-size-px));
   margin-top: 4px;
   margin-bottom: 4px;
   transition: background 0.12s ease, border-color 0.12s ease;
@@ -276,7 +335,17 @@ label { color: var(--text-dim); font-size: 14px; }
 .block:hover { background: var(--surface-2); border-color: var(--border); }
 .block.block-editing { background: var(--surface-2); border-color: var(--border-strong); box-shadow: 0 0 0 1px rgba(255,255,255,0.02); }
 
-.block .bullet { width: var(--indent-size-px); text-align: center; user-select: none; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+/* Bullet más grande y con menos espacio horizontal */
+.block .bullet {
+  width: 14px;
+  text-align: center;
+  user-select: none;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  font-size: 22px;
+  line-height: 1;
+  margin-top: 1px;
+}
 
 .block .editor-pane { flex: 1; }
 
@@ -331,6 +400,17 @@ label { color: var(--text-dim); font-size: 14px; }
 .markdown-preview pre { padding: 12px; overflow-x: auto; margin: 0 0 10px 0; }
 .markdown-preview code { padding: 2px 5px; }
 .markdown-preview pre > code { display: block; background: transparent; border: none; padding: 0; font: inherit; }
+
+/* --- Document view: compact vertical spacing inside markdown preview --- */
+.document-view .markdown-preview p { margin: 0 0 2px 0; }
+.document-view .markdown-preview p:last-child { margin-bottom: 0; }
+.document-view .markdown-preview pre { margin: 0 0 4px 0; }
+.document-view .markdown-preview h1,
+.document-view .markdown-preview h2,
+.document-view .markdown-preview h3,
+.document-view .markdown-preview h4,
+.document-view .markdown-preview h5,
+.document-view .markdown-preview h6 { margin: 0 0 2px 0; }
 
 /* Utility */
 hr { border: none; border-top: 1px solid var(--border); }

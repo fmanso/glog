@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { tick, onMount, onDestroy } from 'svelte';
+    import { tick, onMount } from 'svelte';
     import { SaveDocument } from "../../wailsjs/go/main/App";
     import BlockUIElement from './BlockUIElement.svelte';
     import type { main } from '../../wailsjs/go/models';
@@ -223,5 +223,6 @@
 
 <style>
     :global(:root) { --indent-size-px: 18px; }
-    .document-container { display: flex; flex-direction: column; gap: 4px; }
+    /* Separación mínima entre bloques: que se sienta como líneas consecutivas */
+    .document-container { display: flex; flex-direction: column; gap: 0; }
 </style>

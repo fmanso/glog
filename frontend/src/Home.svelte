@@ -88,13 +88,13 @@ function isToday(document: main.DocumentDto): boolean {
 }
 </script>
 
-<main class="home">
+<main class="page document-view home">
   <section class="list">
     {#if items.length === 0 && !loading}
       <p class="empty">Nothing yet. Scroll will load once data exists.</p>
     {/if}
 
-    {#each items as document (document.id)}
+    {#each items as document, i (document.id)}
       <header class="page-header">
         <div>
           <h1>{document?.title ?? 'Loading…'}</h1>
@@ -111,6 +111,10 @@ function isToday(document: main.DocumentDto): boolean {
           <div class="empty-state">Loading…</div>
         {/if}
       </section>
+
+      {#if i < items.length - 1}
+        <hr class="doc-separator" />
+      {/if}
     {/each}
 
     {#if loading}

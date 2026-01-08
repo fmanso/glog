@@ -310,8 +310,8 @@
     $: isEditing = block.id === currentEditingId;
 </script>
 
-<main class={`block ${isEditing ? 'block-editing' : ''}`} style={`--indent-level: ${block.indent}`}>
-    <div class="bullet">·</div>
+<main class={`block ${isEditing ? 'block-editing' : ''} document-block`} style={`--indent-level: ${block.indent}`}>
+    <div class="bullet">•</div>
     <div class="editor-pane" style="display: {isEditing ? 'block' : 'none'}; width: 100%; position: relative;">
         <div bind:this={editorContainer}></div>
         <div bind:this={pickerAnchor} style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;"></div>
@@ -333,19 +333,43 @@
     }
     main {
         display: flex;
-        align-items: center;
+        /* baseline alinea mejor el bullet con la primera línea */
+        align-items: baseline;
+        /* menos espacio entre bullet y texto */
+        gap: 4px;
         margin-left: calc(var(--indent-level) * var(--indent-size-px));
-        margin-top: 4px;
-        margin-bottom: 4px;
+        /* El espaciado vertical entre bloques lo controla el contenedor (gap) */
+        margin-top: 0;
+        margin-bottom: 0;
     }
-    main > div:first-child {
-        width: var(--indent-size-px);
+
+    /* Bullet: hacerlo grande y alineado */
+    .bullet {
+        width: 16px;
         text-align: center;
         user-select: none;
         color: var(--text-dim);
+        font-size: 28px;
+        line-height: 1;
+        flex: 0 0 auto;
+        /* Compensa la métrica del glifo para que no se vea “subido” */
+        transform: translateY(3px);
     }
+
     main > div:last-child {
         flex-grow: 1;
     }
+
     :global(.flatpickr-calendar) { z-index: 9999 !important; }
+
+    main.document-block {
+        /* layout estable: que el global .block no meta padding/margen */
+        padding: 0;
+        margin-top: 0;
+        margin-bottom: 0;
+        align-items: baseline;
+    }
+    main.document-block .bullet {
+        margin-top: 0;
+    }
 </style>
