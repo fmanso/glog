@@ -427,13 +427,10 @@ func (store *DocumentStore) ReindexSearch() error {
 	// Create new index
 	newSearch, err := openBleveSearch(bleveIndexPath(store.path))
 	if err != nil {
-		// If we can't create a new index, try to recreate an empty one as a fallback
-		// to avoid leaving store.search pointing to a closed index
-		if fallback, fallbackErr := openBleveSearch(bleveIndexPath(store.path)); fallbackErr == nil {
-			store.search = fallback
-			return errors.Join(err, errors.New("reindex failed but created empty fallback index"))
-		}
-		return errors.Join(err, errors.New("failed to create fallback index"))
+		// If we can't create a new index after successfully deleting the old one,
+		// surface the error to the caller rather than attempting a second,
+		// potentially empty, fallback index at the same path.
+		return err
 	}
 
 	// Assign new index to store
