@@ -7,19 +7,28 @@
 
     export let params: { id?: string, title?: string } = {};
 
-    onMount(async () => {
+    async function loadDocument() {
         if (params.id) {
-            document = await OpenDocument(params.id); // Replace with LoadDocumentById when implemented
+            document = await OpenDocument(params.id);
             return;
         }
 
         if (params.title) {
-            document = await OpenDocumentByTitle(params.title); // Implement this function in Go backend
+            document = await OpenDocumentByTitle(params.title);
             return;
         }
 
         document = await LoadJournalToday();
+    }
+
+    onMount(async () => {
+        await loadDocument();
     });
+
+    // React to params changes (when navigating between documents)
+    $: if (params) {
+        loadDocument();
+    }
 </script>
 
 <main class="page document-view">
