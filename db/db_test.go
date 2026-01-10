@@ -20,7 +20,8 @@ func TestNewDocumentStore(t *testing.T) {
 			t.Errorf("Failed to close DocumentStore: %v", err)
 		}
 
-		err = os.Remove("./testnewdocumentstore.db")
+		_ = os.Remove("./testnewdocumentstore.db")
+		_ = os.RemoveAll("./testnewdocumentstore.db.bleve")
 	}()
 
 	if store == nil {
@@ -39,7 +40,8 @@ func TestDocumentStore_Save(t *testing.T) {
 			t.Errorf("Failed to close DocumentStore: %v", err)
 		}
 
-		err = os.Remove("./testsave.db")
+		_ = os.Remove("./testsave.db")
+		_ = os.RemoveAll("./testsave.db.bleve")
 	}()
 
 	doc := &domain.Document{
@@ -89,7 +91,8 @@ func TestDocumentStore_ListDocuments(t *testing.T) {
 			t.Errorf("Failed to close DocumentStore: %v", err)
 		}
 
-		err = os.Remove("./testlistdocuments.db")
+		_ = os.Remove("./testlistdocuments.db")
+		_ = os.RemoveAll("./testlistdocuments.db.bleve")
 	}()
 
 	doc1 := &domain.Document{
@@ -149,7 +152,8 @@ func TestLoadDocumentByTime(t *testing.T) {
 			t.Errorf("Failed to close DocumentStore: %v", err)
 		}
 
-		err = os.Remove("./testloadbytime.db")
+		_ = os.Remove("./testloadbytime.db")
+		_ = os.RemoveAll("./testloadbytime.db.bleve")
 	}()
 
 	doc1 := &domain.Document{
@@ -212,7 +216,8 @@ func TestLoadDocumentByTitle(t *testing.T) {
 			t.Errorf("Failed to close DocumentStore: %v", err)
 		}
 
-		err = os.Remove("./testloadbytitle.db")
+		_ = os.Remove("./testloadbytitle.db")
+		_ = os.RemoveAll("./testloadbytitle.db.bleve")
 	}()
 
 	doc := &domain.Document{
@@ -254,7 +259,8 @@ func TestScheduledTasks(t *testing.T) {
 			t.Errorf("Failed to close DocumentStore: %v", err)
 		}
 
-		err = os.Remove("./testscheduledtasks.db")
+		_ = os.Remove("./testscheduledtasks.db")
+		_ = os.RemoveAll("./testscheduledtasks.db.bleve")
 	}()
 
 	doc := &domain.Document{

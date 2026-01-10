@@ -24,8 +24,7 @@ type DocumentStore struct {
 	bucketTitleIndex         []byte
 	bucketTitleInvertedIndex []byte
 	bucketWordIndex          []byte
-	wordBlockIndex           *wordIndex
-	wordTitleIndex           *wordIndex
+	search                   *bleveSearch
 	referencesIndex          *referencesIndex
 	scheduledIndex           *scheduledTasks
 }
@@ -76,13 +75,7 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 		return nil, err
 	}
 
-	wordBlockIndex, err := newWordIndex(db, "word_block_index", "doc_word_block_index", getWordsFromBlocks)
-	if err != nil {
-		_ = db.Close()
-		return nil, err
-	}
-
-	wordTitleIndex, err := newWordIndex(db, "word_title_index", "doc_word_title_index", getWordsFromTitle)
+	search, err := openBleveSearch(bleveIndexPath(path))
 	if err != nil {
 		_ = db.Close()
 		return nil, err
@@ -106,14 +99,17 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 		bucketDocs:       docsKey,
 		bucketTimeIndex:  timeIndexKey,
 		bucketTitleIndex: titleIndexKey,
-		wordBlockIndex:   wordBlockIndex,
-		wordTitleIndex:   wordTitleIndex,
+		search:           search,
 		referencesIndex:  referencesIndex,
 		scheduledIndex:   scheduledIndex,
 	}, nil
 }
 
 func (store *DocumentStore) Close() error {
+	if err := store.search.Close(); err != nil {
+		_ = store.bolt.Close()
+		return err
+	}
 	return store.bolt.Close()
 }
 
@@ -175,27 +171,20 @@ func (store *DocumentStore) saveTitleIndex(tx *bolt.Tx, doc *domain.Document) er
 }
 
 func (store *DocumentStore) Save(doc *domain.Document) error {
-	return store.bolt.Update(func(tx *bolt.Tx) error {
+	var savedDoc *DocDb
+	if err := store.bolt.Update(func(tx *bolt.Tx) error {
 		docDb, err := store.saveDoc(tx, doc)
 		if err != nil {
 			return err
 		}
+		savedDoc = docDb
+
 		err = store.saveTimeIndex(tx, doc)
 		if err != nil {
 			return err
 		}
 
 		err = store.saveTitleIndex(tx, doc)
-		if err != nil {
-			return err
-		}
-
-		err = store.wordBlockIndex.save(tx, docDb)
-		if err != nil {
-			return err
-		}
-
-		err = store.wordTitleIndex.save(tx, docDb)
 		if err != nil {
 			return err
 		}
@@ -211,7 +200,17 @@ func (store *DocumentStore) Save(doc *domain.Document) error {
 		}
 
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+
+	if savedDoc != nil {
+		if err := store.search.IndexDoc(savedDoc); err != nil {
+			log.Errorf("Bleve indexing failed: %v", err)
+		}
+	}
+
+	return nil
 }
 
 func (store *DocumentStore) loadDocument(tx *bolt.Tx, id domain.DocumentID) (*domain.Document, error) {
@@ -371,33 +370,45 @@ func (store *DocumentStore) LoadDocumentByTitle(title string) (*domain.Document,
 }
 
 func (store *DocumentStore) Search(query string) ([]domain.DocumentID, error) {
-	var resultIDs []domain.DocumentID
-	err := store.bolt.View(func(tx *bolt.Tx) error {
-		ids, err := store.wordBlockIndex.Search(tx, query)
-		if err != nil {
-			return err
-		}
-
-		for _, id := range ids {
-			resultIDs = append(resultIDs, domain.DocumentID(id))
-		}
-
-		ids, err = store.wordTitleIndex.Search(tx, query)
-		if err != nil {
-			return err
-		}
-
-		for _, id := range ids {
-			resultIDs = append(resultIDs, domain.DocumentID(id))
-		}
-		return nil
-	})
-
+	ids, err := store.search.Search(query)
 	if err != nil {
 		return nil, err
 	}
 
+	resultIDs := make([]domain.DocumentID, 0, len(ids))
+	for _, id := range ids {
+		resultIDs = append(resultIDs, domain.DocumentID(id))
+	}
+
 	return resultIDs, nil
+}
+
+func (store *DocumentStore) ReindexSearch() error {
+	if err := store.search.Close(); err != nil {
+		return err
+	}
+	if err := store.search.DeleteIndexDir(); err != nil {
+		return err
+	}
+
+	search, err := openBleveSearch(bleveIndexPath(store.path))
+	if err != nil {
+		return err
+	}
+	store.search = search
+
+	return store.bolt.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(store.bucketDocs)
+		return bucket.ForEach(func(k, v []byte) error {
+			var docDb DocDb
+			buf := bytes.NewBuffer(v)
+			dec := gob.NewDecoder(buf)
+			if err := dec.Decode(&docDb); err != nil {
+				return err
+			}
+			return store.search.IndexDoc(&docDb)
+		})
+	})
 }
 
 func (store *DocumentStore) GetReferences(title string) ([]domain.DocumentID, error) {

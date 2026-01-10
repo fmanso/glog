@@ -9,110 +9,153 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestWordIndex_Search(t *testing.T) {
-	store, err := NewDocumentStore("./testwordindexsearch.db")
+func TestSearchBleve_ContentTermMatch(t *testing.T) {
+	store, err := NewDocumentStore("./test_bleve_content_term.db")
 	if err != nil {
 		t.Fatalf("Failed to create DocumentStore: %v", err)
 	}
 	defer func() {
-		err := store.Close()
-		if err != nil {
-			t.Errorf("Failed to close DocumentStore: %v", err)
-		}
-
-		err = os.Remove("./testwordindexsearch.db")
+		_ = store.Close()
+		_ = os.Remove("./test_bleve_content_term.db")
+		_ = os.RemoveAll("./test_bleve_content_term.db.bleve")
 	}()
 
 	doc := &domain.Document{
 		ID:    domain.DocumentID(uuid.New()),
-		Title: "Test Document Title",
+		Title: "Unrelated title",
 		Date:  time.Now().UTC(),
-		Blocks: []*domain.Block{
-			{
-				ID:      domain.BlockID(uuid.New()),
-				Content: "Test Content",
-				Indent:  0,
-			},
-		},
+		Blocks: []*domain.Block{{
+			ID:      domain.BlockID(uuid.New()),
+			Content: "hello world",
+			Indent:  0,
+		}},
 	}
 
-	err = store.Save(doc)
-	if err != nil {
+	if err := store.Save(doc); err != nil {
 		t.Fatalf("Failed to save document: %v", err)
 	}
 
-	results, err := store.Search("test content")
+	results, err := store.Search("world")
 	if err != nil {
-		t.Fatalf("Failed to search for word: %v", err)
+		t.Fatalf("Search failed: %v", err)
 	}
-
-	if len(results) == 0 {
-		t.Fatal("Expected to find at least one document, found none")
+	if len(results) != 1 {
+		t.Fatalf("Expected 1 result, got %d", len(results))
 	}
-
-	doc.Blocks[0].Content = "New Content"
-	err = store.Save(doc)
-	if err != nil {
-		t.Fatalf("Failed to update document: %v", err)
-	}
-
-	results, err = store.Search("test content")
-	if err != nil {
-		t.Fatalf("Failed to search for word after update: %v", err)
-	}
-
-	if len(results) != 0 {
-		t.Fatal("Expected to find none after update, found some")
-	}
-
-	results, err = store.Search("Document Title")
-	if err != nil {
-		t.Fatalf("Failed to search for title words: %v", err)
-	}
-
-	if len(results) == 0 {
-		t.Fatal("Expected to find at least one document by title, found none")
+	if results[0] != doc.ID {
+		t.Fatalf("Expected %v, got %v", doc.ID, results[0])
 	}
 }
 
-func TestWordIndex_Search_NotFound(t *testing.T) {
-	store, err := NewDocumentStore("./testnotfound.db")
+func TestSearchBleve_TitleMatch(t *testing.T) {
+	store, err := NewDocumentStore("./test_bleve_title_term.db")
 	if err != nil {
 		t.Fatalf("Failed to create DocumentStore: %v", err)
 	}
 	defer func() {
-		err := store.Close()
-		if err != nil {
-			t.Errorf("Failed to close DocumentStore: %v", err)
-		}
-
-		err = os.Remove("./testnotfound.db")
+		_ = store.Close()
+		_ = os.Remove("./test_bleve_title_term.db")
+		_ = os.RemoveAll("./test_bleve_title_term.db.bleve")
 	}()
 
 	doc := &domain.Document{
 		ID:    domain.DocumentID(uuid.New()),
-		Title: "Test Document Title",
+		Title: "Golang Bleve",
 		Date:  time.Now().UTC(),
-		Blocks: []*domain.Block{
-			{
-				ID:      domain.BlockID(uuid.New()),
-				Content: "Test Content",
-				Indent:  0,
-			},
-		},
+		Blocks: []*domain.Block{{
+			ID:      domain.BlockID(uuid.New()),
+			Content: "nothing to see here",
+			Indent:  0,
+		}},
 	}
 
-	err = store.Save(doc)
-	if err != nil {
+	if err := store.Save(doc); err != nil {
 		t.Fatalf("Failed to save document: %v", err)
 	}
 
-	results, err := store.Search("test notfound")
+	results, err := store.Search("bleve")
 	if err != nil {
-		t.Fatalf("Failed to search for word: %v", err)
+		t.Fatalf("Search failed: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("Expected 1 result, got %d", len(results))
+	}
+}
+
+func TestSearchBleve_PhraseMatch(t *testing.T) {
+	store, err := NewDocumentStore("./test_bleve_phrase.db")
+	if err != nil {
+		t.Fatalf("Failed to create DocumentStore: %v", err)
+	}
+	defer func() {
+		_ = store.Close()
+		_ = os.Remove("./test_bleve_phrase.db")
+		_ = os.RemoveAll("./test_bleve_phrase.db.bleve")
+	}()
+
+	doc := &domain.Document{
+		ID:    domain.DocumentID(uuid.New()),
+		Title: "Some title",
+		Date:  time.Now().UTC(),
+		Blocks: []*domain.Block{{
+			ID:      domain.BlockID(uuid.New()),
+			Content: "the quick brown fox",
+			Indent:  0,
+		}},
 	}
 
+	if err := store.Save(doc); err != nil {
+		t.Fatalf("Failed to save document: %v", err)
+	}
+
+	results, err := store.Search("\"quick brown\"")
+	if err != nil {
+		t.Fatalf("Search failed: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("Expected 1 result, got %d", len(results))
+	}
+
+	results, err = store.Search("\"brown quick\"")
+	if err != nil {
+		t.Fatalf("Search failed: %v", err)
+	}
 	if len(results) != 0 {
-		t.Fatal("Expected to find none, found some")
+		t.Fatalf("Expected 0 results, got %d", len(results))
+	}
+}
+
+func TestSearchBleve_FuzzyMatch(t *testing.T) {
+	store, err := NewDocumentStore("./test_bleve_fuzzy.db")
+	if err != nil {
+		t.Fatalf("Failed to create DocumentStore: %v", err)
+	}
+	defer func() {
+		_ = store.Close()
+		_ = os.Remove("./test_bleve_fuzzy.db")
+		_ = os.RemoveAll("./test_bleve_fuzzy.db.bleve")
+	}()
+
+	doc := &domain.Document{
+		ID:    domain.DocumentID(uuid.New()),
+		Title: "Some title",
+		Date:  time.Now().UTC(),
+		Blocks: []*domain.Block{{
+			ID:      domain.BlockID(uuid.New()),
+			Content: "elephant",
+			Indent:  0,
+		}},
+	}
+
+	if err := store.Save(doc); err != nil {
+		t.Fatalf("Failed to save document: %v", err)
+	}
+
+	results, err := store.Search("elephnt")
+	if err != nil {
+		t.Fatalf("Search failed: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("Expected 1 result, got %d", len(results))
 	}
 }
