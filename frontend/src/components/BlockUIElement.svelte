@@ -319,9 +319,22 @@
 
     {#if !isEditing}
         <div class="markdown-preview"
+             role="textbox"
+             tabindex="0"
+             aria-label="Edit block"
              on:mousedown={handlePreviewMouseDown}
-             on:dblclick={handlePreviewDblClick}>
-            {@html markdownHtml}
+             on:dblclick={handlePreviewDblClick}
+             on:keydown={(e) => {
+                 if (e.key === 'Enter' || e.key === ' ') {
+                     e.preventDefault();
+                     startEditingAndFocus();
+                 }
+             }}>
+            {#if (block.content ?? '').length === 0}
+                <span class="empty-placeholder">&nbsp;</span>
+            {:else}
+                {@html markdownHtml}
+            {/if}
         </div>
     {/if}
 
@@ -369,7 +382,18 @@
         margin-bottom: 0;
         align-items: baseline;
     }
-    main.document-block .bullet {
-        margin-top: 0;
-    }
-</style>
+     main.document-block .bullet {
+         margin-top: 0;
+     }
+
+     .markdown-preview {
+         width: 100%;
+         min-height: 1.2em;
+     }
+
+     .empty-placeholder {
+         display: inline-block;
+         width: 100%;
+         min-height: 1.2em;
+     }
+ </style>
