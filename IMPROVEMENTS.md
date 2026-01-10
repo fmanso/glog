@@ -25,27 +25,6 @@ if os.Getenv("GLOG_DEBUG") == "true" {
 }
 ```
 
----
-
-## 2. Delete Unused Word Index Code
-
-**Priority:** HIGH | **Effort:** 20 minutes
-
-- **Location:** `db/words.go` (247 lines) and `db/words_test.go`
-- **Issue:** Entire word indexing implementation replaced by Bleve but never removed
-- **Fix:** Delete files and remove bucket initialization from `db.go`
-- **Impact:** Reduces technical debt, confusion, and binary size
-
-**Files to remove:**
-- `db/words.go`
-- `db/words_test.go`
-
-**Code to remove from `db/db.go`:**
-- `wordBlockIndex` / `wordTitleIndex` fields
-- Related bucket initialization
-
----
-
 ## 3. Fix Timezone Handling for "Today's Journal"
 
 **Priority:** HIGH | **Effort:** 30 minutes
