@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -35,7 +36,7 @@ func openBleveSearch(path string) (*bleveSearch, error) {
 	if err == nil {
 		return &bleveSearch{path: path, index: idx}, nil
 	}
-	if err != bleve.ErrorIndexPathDoesNotExist {
+	if !errors.Is(err, bleve.ErrorIndexPathDoesNotExist) {
 		return nil, err
 	}
 
