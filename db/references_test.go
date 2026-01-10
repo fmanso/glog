@@ -20,7 +20,8 @@ func TestReferences_GetReferences(t *testing.T) {
 			t.Errorf("Failed to close DocumentStore: %v", err)
 		}
 
-		err = os.Remove("./testreferences.db")
+		_ = os.Remove("./testreferences.db")
+		_ = os.RemoveAll("./testreferences.db.bleve")
 	}()
 
 	referencedDoc := &domain.Document{
@@ -80,7 +81,8 @@ func TestReferences_DeleteOldReferences(t *testing.T) {
 			t.Errorf("Failed to close DocumentStore: %v", err)
 		}
 
-		err = os.Remove("./testreferences.db")
+		_ = os.Remove("./testreferences.db")
+		_ = os.RemoveAll("./testreferences.db.bleve")
 	}()
 
 	referencedDoc := &domain.Document{

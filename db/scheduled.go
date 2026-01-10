@@ -8,8 +8,8 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/boltdb/bolt"
 	"github.com/google/uuid"
+	bolt "go.etcd.io/bbolt"
 )
 
 type scheduledTasks struct {

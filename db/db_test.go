@@ -20,7 +20,8 @@ func TestNewDocumentStore(t *testing.T) {
 			t.Errorf("Failed to close DocumentStore: %v", err)
 		}
 
-		err = os.Remove("./testnewdocumentstore.db")
+		_ = os.Remove("./testnewdocumentstore.db")
+		_ = os.RemoveAll("./testnewdocumentstore.db.bleve")
 	}()
 
 	if store == nil {
@@ -39,7 +40,8 @@ func TestDocumentStore_Save(t *testing.T) {
 			t.Errorf("Failed to close DocumentStore: %v", err)
 		}
 
-		err = os.Remove("./testsave.db")
+		_ = os.Remove("./testsave.db")
+		_ = os.RemoveAll("./testsave.db.bleve")
 	}()
 
 	doc := &domain.Document{
@@ -89,7 +91,8 @@ func TestDocumentStore_ListDocuments(t *testing.T) {
 			t.Errorf("Failed to close DocumentStore: %v", err)
 		}
 
-		err = os.Remove("./testlistdocuments.db")
+		_ = os.Remove("./testlistdocuments.db")
+		_ = os.RemoveAll("./testlistdocuments.db.bleve")
 	}()
 
 	doc1 := &domain.Document{
@@ -149,7 +152,8 @@ func TestLoadDocumentByTime(t *testing.T) {
 			t.Errorf("Failed to close DocumentStore: %v", err)
 		}
 
-		err = os.Remove("./testloadbytime.db")
+		_ = os.Remove("./testloadbytime.db")
+		_ = os.RemoveAll("./testloadbytime.db.bleve")
 	}()
 
 	doc1 := &domain.Document{
@@ -212,7 +216,8 @@ func TestLoadDocumentByTitle(t *testing.T) {
 			t.Errorf("Failed to close DocumentStore: %v", err)
 		}
 
-		err = os.Remove("./testloadbytitle.db")
+		_ = os.Remove("./testloadbytitle.db")
+		_ = os.RemoveAll("./testloadbytitle.db.bleve")
 	}()
 
 	doc := &domain.Document{
@@ -254,7 +259,8 @@ func TestScheduledTasks(t *testing.T) {
 			t.Errorf("Failed to close DocumentStore: %v", err)
 		}
 
-		err = os.Remove("./testscheduledtasks.db")
+		_ = os.Remove("./testscheduledtasks.db")
+		_ = os.RemoveAll("./testscheduledtasks.db.bleve")
 	}()
 
 	doc := &domain.Document{
@@ -290,5 +296,511 @@ func TestScheduledTasks(t *testing.T) {
 
 	if got[0].BlockID != doc.Blocks[0].ID {
 		t.Errorf("Scheduled task BlockID mismatch: got %v, want %v", got[0].BlockID, doc.Blocks[0].ID)
+	}
+}
+
+func TestReindexSearch(t *testing.T) {
+	store, err := NewDocumentStore("./testreindex.db")
+	if err != nil {
+		t.Fatalf("Failed to create DocumentStore: %v", err)
+	}
+	defer func() {
+		err := store.Close()
+		if err != nil {
+			t.Errorf("Failed to close DocumentStore: %v", err)
+		}
+
+		_ = os.Remove("./testreindex.db")
+		_ = os.RemoveAll("./testreindex.db.bleve")
+	}()
+
+	// Create documents with searchable content
+	doc1 := &domain.Document{
+		ID:    domain.DocumentID(uuid.New()),
+		Title: "Programming Languages",
+		Date:  time.Now().UTC(),
+		Blocks: []*domain.Block{
+			{
+				ID:      domain.BlockID(uuid.New()),
+				Content: "Go is a statically typed compiled language",
+				Indent:  0,
+			},
+			{
+				ID:      domain.BlockID(uuid.New()),
+				Content: "Python is a dynamically typed interpreted language",
+				Indent:  0,
+			},
+		},
+	}
+
+	doc2 := &domain.Document{
+		ID:    domain.DocumentID(uuid.New()),
+		Title: "Database Systems",
+		Date:  time.Now().UTC(),
+		Blocks: []*domain.Block{
+			{
+				ID:      domain.BlockID(uuid.New()),
+				Content: "BoltDB is an embedded key-value database",
+				Indent:  0,
+			},
+			{
+				ID:      domain.BlockID(uuid.New()),
+				Content: "PostgreSQL is a powerful relational database",
+				Indent:  0,
+			},
+		},
+	}
+
+	// Save documents before reindexing
+	err = store.Save(doc1)
+	if err != nil {
+		t.Fatalf("Failed to save document 1: %v", err)
+	}
+
+	err = store.Save(doc2)
+	if err != nil {
+		t.Fatalf("Failed to save document 2: %v", err)
+	}
+
+	// Verify search works before reindex
+	results, err := store.Search("language")
+	if err != nil {
+		t.Fatalf("Failed to search before reindex: %v", err)
+	}
+
+	if len(results) != 1 {
+		t.Errorf("Expected 1 result before reindex, got %v", len(results))
+	}
+
+	// Perform reindexing
+	err = store.ReindexSearch()
+	if err != nil {
+		t.Fatalf("Failed to reindex search: %v", err)
+	}
+
+	// Verify search still works after reindex
+	results, err = store.Search("language")
+	if err != nil {
+		t.Fatalf("Failed to search after reindex: %v", err)
+	}
+
+	if len(results) != 1 {
+		t.Errorf("Expected 1 result after reindex, got %v", len(results))
+	}
+
+	if results[0] != doc1.ID {
+		t.Errorf("Expected document ID %v, got %v", doc1.ID, results[0])
+	}
+
+	// Verify both documents are searchable
+	results, err = store.Search("database")
+	if err != nil {
+		t.Fatalf("Failed to search for 'database': %v", err)
+	}
+
+	if len(results) != 1 {
+		t.Errorf("Expected 1 result for 'database', got %v", len(results))
+	}
+
+	if results[0] != doc2.ID {
+		t.Errorf("Expected document ID %v, got %v", doc2.ID, results[0])
+	}
+
+	// Search by title
+	results, err = store.Search("Programming")
+	if err != nil {
+		t.Fatalf("Failed to search by title: %v", err)
+	}
+
+	if len(results) != 1 {
+		t.Errorf("Expected 1 result for title search, got %v", len(results))
+	}
+
+	if results[0] != doc1.ID {
+		t.Errorf("Expected document ID %v, got %v", doc1.ID, results[0])
+	}
+}
+
+func TestReindexSearchEmpty(t *testing.T) {
+	store, err := NewDocumentStore("./testreindexempty.db")
+	if err != nil {
+		t.Fatalf("Failed to create DocumentStore: %v", err)
+	}
+	defer func() {
+		err := store.Close()
+		if err != nil {
+			t.Errorf("Failed to close DocumentStore: %v", err)
+		}
+
+		_ = os.Remove("./testreindexempty.db")
+		_ = os.RemoveAll("./testreindexempty.db.bleve")
+	}()
+
+	// Reindex on empty database should not fail
+	err = store.ReindexSearch()
+	if err != nil {
+		t.Fatalf("Failed to reindex empty database: %v", err)
+	}
+
+	// Search should return no results
+	results, err := store.Search("anything")
+	if err != nil {
+		t.Fatalf("Failed to search after reindex: %v", err)
+	}
+
+	if len(results) != 0 {
+		t.Errorf("Expected 0 results, got %v", len(results))
+	}
+}
+
+func TestReindexSearchWithNewDocuments(t *testing.T) {
+	store, err := NewDocumentStore("./testreindexnew.db")
+	if err != nil {
+		t.Fatalf("Failed to create DocumentStore: %v", err)
+	}
+	defer func() {
+		err := store.Close()
+		if err != nil {
+			t.Errorf("Failed to close DocumentStore: %v", err)
+		}
+
+		_ = os.Remove("./testreindexnew.db")
+		_ = os.RemoveAll("./testreindexnew.db.bleve")
+	}()
+
+	// Add first document
+	doc1 := &domain.Document{
+		ID:    domain.DocumentID(uuid.New()),
+		Title: "First Document",
+		Date:  time.Now().UTC(),
+		Blocks: []*domain.Block{
+			{
+				ID:      domain.BlockID(uuid.New()),
+				Content: "Original content before reindex",
+				Indent:  0,
+			},
+		},
+	}
+
+	err = store.Save(doc1)
+	if err != nil {
+		t.Fatalf("Failed to save document 1: %v", err)
+	}
+
+	// Reindex
+	err = store.ReindexSearch()
+	if err != nil {
+		t.Fatalf("Failed to reindex: %v", err)
+	}
+
+	// Add second document after reindex
+	doc2 := &domain.Document{
+		ID:    domain.DocumentID(uuid.New()),
+		Title: "Second Document",
+		Date:  time.Now().UTC(),
+		Blocks: []*domain.Block{
+			{
+				ID:      domain.BlockID(uuid.New()),
+				Content: "New content after reindex",
+				Indent:  0,
+			},
+		},
+	}
+
+	err = store.Save(doc2)
+	if err != nil {
+		t.Fatalf("Failed to save document 2: %v", err)
+	}
+
+	// Search for first document
+	results, err := store.Search("Original")
+	if err != nil {
+		t.Fatalf("Failed to search for first document: %v", err)
+	}
+
+	if len(results) != 1 {
+		t.Errorf("Expected 1 result for 'Original', got %v", len(results))
+	}
+
+	if len(results) > 0 && results[0] != doc1.ID {
+		t.Errorf("Expected document ID %v, got %v", doc1.ID, results[0])
+	}
+
+	// Search for second document
+	results, err = store.Search("New")
+	if err != nil {
+		t.Fatalf("Failed to search for second document: %v", err)
+	}
+
+	if len(results) != 1 {
+		t.Errorf("Expected 1 result for 'New', got %v", len(results))
+	}
+
+	if len(results) > 0 && results[0] != doc2.ID {
+		t.Errorf("Expected document ID %v, got %v", doc2.ID, results[0])
+	}
+
+	// Verify both documents are indexed
+	results, err = store.Search("content")
+	if err != nil {
+		t.Fatalf("Failed to search for 'content': %v", err)
+	}
+
+	if len(results) != 2 {
+		t.Errorf("Expected 2 results for 'content', got %v", len(results))
+	}
+}
+
+// TestReindexSearchConcurrentSave verifies that Save operations can run
+// concurrently with ReindexSearch without causing race conditions or panics.
+func TestReindexSearchConcurrentSave(t *testing.T) {
+	store, err := NewDocumentStore("./testreindexconcurrentsave.db")
+	if err != nil {
+		t.Fatalf("Failed to create DocumentStore: %v", err)
+	}
+	defer func() {
+		err := store.Close()
+		if err != nil {
+			t.Errorf("Failed to close DocumentStore: %v", err)
+		}
+
+		_ = os.Remove("./testreindexconcurrentsave.db")
+		_ = os.RemoveAll("./testreindexconcurrentsave.db.bleve")
+	}()
+
+	// Add initial documents
+	for i := 0; i < 5; i++ {
+		doc := &domain.Document{
+			ID:    domain.DocumentID(uuid.New()),
+			Title: "Initial Document",
+			Date:  time.Now().UTC(),
+			Blocks: []*domain.Block{
+				{
+					ID:      domain.BlockID(uuid.New()),
+					Content: "Initial content for search",
+					Indent:  0,
+				},
+			},
+		}
+		if err := store.Save(doc); err != nil {
+			t.Fatalf("Failed to save initial document: %v", err)
+		}
+	}
+
+	// Start reindexing in a goroutine
+	reindexDone := make(chan error, 1)
+	go func() {
+		reindexDone <- store.ReindexSearch()
+	}()
+
+	// Concurrently save documents while reindexing
+	saveDone := make(chan error, 1)
+	go func() {
+		for i := 0; i < 5; i++ {
+			doc := &domain.Document{
+				ID:    domain.DocumentID(uuid.New()),
+				Title: "Concurrent Document",
+				Date:  time.Now().UTC(),
+				Blocks: []*domain.Block{
+					{
+						ID:      domain.BlockID(uuid.New()),
+						Content: "Concurrent content for search",
+						Indent:  0,
+					},
+				},
+			}
+			if err := store.Save(doc); err != nil {
+				saveDone <- err
+				return
+			}
+			time.Sleep(10 * time.Millisecond) // Small delay to increase chance of interleaving
+		}
+		saveDone <- nil
+	}()
+
+	// Wait for both operations to complete
+	if err := <-reindexDone; err != nil {
+		t.Fatalf("ReindexSearch failed: %v", err)
+	}
+	if err := <-saveDone; err != nil {
+		t.Fatalf("Concurrent Save failed: %v", err)
+	}
+
+	// Verify all documents are searchable
+	results, err := store.Search("content")
+	if err != nil {
+		t.Fatalf("Failed to search after concurrent operations: %v", err)
+	}
+
+	if len(results) != 10 {
+		t.Errorf("Expected 10 documents after concurrent operations, got %v", len(results))
+	}
+}
+
+// TestReindexSearchConcurrentSearch verifies that Search operations can run
+// concurrently with ReindexSearch without causing race conditions or panics.
+func TestReindexSearchConcurrentSearch(t *testing.T) {
+	store, err := NewDocumentStore("./testreindexconcurrentsearch.db")
+	if err != nil {
+		t.Fatalf("Failed to create DocumentStore: %v", err)
+	}
+	defer func() {
+		err := store.Close()
+		if err != nil {
+			t.Errorf("Failed to close DocumentStore: %v", err)
+		}
+
+		_ = os.Remove("./testreindexconcurrentsearch.db")
+		_ = os.RemoveAll("./testreindexconcurrentsearch.db.bleve")
+	}()
+
+	// Add documents to search
+	for i := 0; i < 10; i++ {
+		doc := &domain.Document{
+			ID:    domain.DocumentID(uuid.New()),
+			Title: "Test Document",
+			Date:  time.Now().UTC(),
+			Blocks: []*domain.Block{
+				{
+					ID:      domain.BlockID(uuid.New()),
+					Content: "Searchable content",
+					Indent:  0,
+				},
+			},
+		}
+		if err := store.Save(doc); err != nil {
+			t.Fatalf("Failed to save document: %v", err)
+		}
+	}
+
+	// Start reindexing in a goroutine
+	reindexDone := make(chan error, 1)
+	go func() {
+		reindexDone <- store.ReindexSearch()
+	}()
+
+	// Concurrently perform searches while reindexing
+	searchDone := make(chan error, 1)
+	go func() {
+		for i := 0; i < 20; i++ {
+			_, err := store.Search("Searchable")
+			if err != nil {
+				searchDone <- err
+				return
+			}
+			time.Sleep(5 * time.Millisecond) // Small delay to increase chance of interleaving
+		}
+		searchDone <- nil
+	}()
+
+	// Wait for both operations to complete
+	if err := <-reindexDone; err != nil {
+		t.Fatalf("ReindexSearch failed: %v", err)
+	}
+	if err := <-searchDone; err != nil {
+		t.Fatalf("Concurrent Search failed: %v", err)
+	}
+
+	// Verify search still works after reindex
+	results, err := store.Search("Searchable")
+	if err != nil {
+		t.Fatalf("Failed to search after concurrent operations: %v", err)
+	}
+
+	if len(results) != 10 {
+		t.Errorf("Expected 10 documents after concurrent operations, got %v", len(results))
+	}
+}
+
+// TestConcurrentSaveAndSearch verifies that Save and Search operations
+// can run concurrently without race conditions.
+func TestConcurrentSaveAndSearch(t *testing.T) {
+	store, err := NewDocumentStore("./testconcurrentsavesearch.db")
+	if err != nil {
+		t.Fatalf("Failed to create DocumentStore: %v", err)
+	}
+	defer func() {
+		err := store.Close()
+		if err != nil {
+			t.Errorf("Failed to close DocumentStore: %v", err)
+		}
+
+		_ = os.Remove("./testconcurrentsavesearch.db")
+		_ = os.RemoveAll("./testconcurrentsavesearch.db.bleve")
+	}()
+
+	// Number of concurrent operations
+	numSavers := 5
+	numSearchers := 5
+	docsPerSaver := 10
+
+	// Launch concurrent savers
+	saveDone := make(chan error, numSavers)
+	for s := 0; s < numSavers; s++ {
+		go func(saverID int) {
+			for i := 0; i < docsPerSaver; i++ {
+				doc := &domain.Document{
+					ID:    domain.DocumentID(uuid.New()),
+					Title: "Concurrent Test " + uuid.New().String(),
+					Date:  time.Now().UTC(),
+					Blocks: []*domain.Block{
+						{
+							ID:      domain.BlockID(uuid.New()),
+							Content: "Concurrent content",
+							Indent:  0,
+						},
+					},
+				}
+				if err := store.Save(doc); err != nil {
+					saveDone <- err
+					return
+				}
+			}
+			saveDone <- nil
+		}(s)
+	}
+
+	// Launch concurrent searchers
+	searchDone := make(chan error, numSearchers)
+	for s := 0; s < numSearchers; s++ {
+		go func() {
+			for i := 0; i < 20; i++ {
+				_, err := store.Search("Concurrent")
+				if err != nil {
+					searchDone <- err
+					return
+				}
+				time.Sleep(5 * time.Millisecond)
+			}
+			searchDone <- nil
+		}()
+	}
+
+	// Wait for all savers
+	for i := 0; i < numSavers; i++ {
+		if err := <-saveDone; err != nil {
+			t.Fatalf("Saver %d failed: %v", i, err)
+		}
+	}
+
+	// Wait for all searchers
+	for i := 0; i < numSearchers; i++ {
+		if err := <-searchDone; err != nil {
+			t.Fatalf("Searcher %d failed: %v", i, err)
+		}
+	}
+
+	// Give Bleve a moment to flush its internal buffers
+	time.Sleep(100 * time.Millisecond)
+
+	// Verify final state
+	results, err := store.Search("Concurrent")
+	if err != nil {
+		t.Fatalf("Final search failed: %v", err)
+	}
+
+	expectedDocs := numSavers * docsPerSaver
+	if len(results) != expectedDocs {
+		t.Errorf("Expected %d documents, got %v", expectedDocs, len(results))
 	}
 }

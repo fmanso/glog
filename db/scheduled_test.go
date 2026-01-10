@@ -20,7 +20,8 @@ func TestScheduled_GetTasks(t *testing.T) {
 			t.Errorf("Failed to close DocumentStore: %v", err)
 		}
 
-		err = os.Remove("./testscheduled.db")
+		_ = os.Remove("./testscheduled.db")
+		_ = os.RemoveAll("./testscheduled.db.bleve")
 	}()
 
 	docID := domain.DocumentID(uuid.New())
@@ -59,7 +60,8 @@ func TestScheduled_RemoveObsoleteTasks(t *testing.T) {
 			t.Errorf("Failed to close DocumentStore: %v", err)
 		}
 
-		err = os.Remove("./testscheduled.db")
+		_ = os.Remove("./testscheduled.db")
+		_ = os.RemoveAll("./testscheduled.db.bleve")
 	}()
 
 	doc := &domain.Document{

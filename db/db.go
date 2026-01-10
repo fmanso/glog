@@ -6,28 +6,40 @@ import (
 	"errors"
 	"glog/domain"
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/boltdb/bolt"
-	_ "github.com/boltdb/bolt"
 	"github.com/google/uuid"
 	"github.com/labstack/gommon/log"
+	bolt "go.etcd.io/bbolt"
 )
 
 var ErrDocumentNotFound = errors.New("document not found")
 
+// DocumentStore provides thread-safe access to document storage and search.
+//
+// Thread-Safety:
+//
+// DocumentStore is safe for concurrent use. All methods that access
+// the search index are protected by an internal RWMutex:
+//
+//   - Save() acquires a read lock when indexing (allows concurrent saves)
+//   - Search() acquires a read lock (allows concurrent searches)
+//   - ReindexSearch() acquires a write lock (blocks all other operations)
+//   - Close() acquires a write lock (ensures clean shutdown)
+//
+// This ensures that ReindexSearch cannot run concurrently with any
+// other search index operations, preventing race conditions.
 type DocumentStore struct {
-	path                     string
-	bolt                     *bolt.DB
-	bucketDocs               []byte
-	bucketTimeIndex          []byte
-	bucketTitleIndex         []byte
-	bucketTitleInvertedIndex []byte
-	bucketWordIndex          []byte
-	wordBlockIndex           *wordIndex
-	wordTitleIndex           *wordIndex
-	referencesIndex          *referencesIndex
-	scheduledIndex           *scheduledTasks
+	path             string
+	bolt             *bolt.DB
+	bucketDocs       []byte
+	bucketTimeIndex  []byte
+	bucketTitleIndex []byte
+	search           *bleveSearch
+	searchMu         sync.RWMutex // protects search index operations
+	referencesIndex  *referencesIndex
+	scheduledIndex   *scheduledTasks
 }
 
 func NewDocumentStore(path string) (*DocumentStore, error) {
@@ -39,8 +51,6 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 	docsKey := []byte("documents")
 	timeIndexKey := []byte("time_index")
 	titleIndexKey := []byte("title_index")
-	titleInvertedIndexKey := []byte("title_inverted_index")
-	wordIndexKey := []byte("word_index")
 
 	err = db.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists(docsKey)
@@ -58,16 +68,6 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 			return err
 		}
 
-		_, err = tx.CreateBucketIfNotExists(titleInvertedIndexKey)
-		if err != nil {
-			return err
-		}
-
-		_, err = tx.CreateBucketIfNotExists(wordIndexKey)
-		if err != nil {
-			return err
-		}
-
 		return nil
 	})
 
@@ -76,13 +76,7 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 		return nil, err
 	}
 
-	wordBlockIndex, err := newWordIndex(db, "word_block_index", "doc_word_block_index", getWordsFromBlocks)
-	if err != nil {
-		_ = db.Close()
-		return nil, err
-	}
-
-	wordTitleIndex, err := newWordIndex(db, "word_title_index", "doc_word_title_index", getWordsFromTitle)
+	search, err := openBleveSearch(bleveIndexPath(path))
 	if err != nil {
 		_ = db.Close()
 		return nil, err
@@ -91,12 +85,14 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 	referencesIndex, err := newReferencesIndex(db)
 	if err != nil {
 		_ = db.Close()
+		_ = search.Close()
 		return nil, err
 	}
 
 	scheduledIndex, err := newScheduledTasks(db)
 	if err != nil {
 		_ = db.Close()
+		_ = search.Close()
 		return nil, err
 	}
 
@@ -106,14 +102,21 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 		bucketDocs:       docsKey,
 		bucketTimeIndex:  timeIndexKey,
 		bucketTitleIndex: titleIndexKey,
-		wordBlockIndex:   wordBlockIndex,
-		wordTitleIndex:   wordTitleIndex,
+		search:           search,
 		referencesIndex:  referencesIndex,
 		scheduledIndex:   scheduledIndex,
 	}, nil
 }
 
 func (store *DocumentStore) Close() error {
+	// Acquire write lock to ensure no operations are in-flight during shutdown
+	store.searchMu.Lock()
+	defer store.searchMu.Unlock()
+
+	if err := store.search.Close(); err != nil {
+		boltErr := store.bolt.Close()
+		return errors.Join(err, boltErr)
+	}
 	return store.bolt.Close()
 }
 
@@ -175,27 +178,20 @@ func (store *DocumentStore) saveTitleIndex(tx *bolt.Tx, doc *domain.Document) er
 }
 
 func (store *DocumentStore) Save(doc *domain.Document) error {
-	return store.bolt.Update(func(tx *bolt.Tx) error {
+	var savedDoc *DocDb
+	if err := store.bolt.Update(func(tx *bolt.Tx) error {
 		docDb, err := store.saveDoc(tx, doc)
 		if err != nil {
 			return err
 		}
+		savedDoc = docDb
+
 		err = store.saveTimeIndex(tx, doc)
 		if err != nil {
 			return err
 		}
 
 		err = store.saveTitleIndex(tx, doc)
-		if err != nil {
-			return err
-		}
-
-		err = store.wordBlockIndex.save(tx, docDb)
-		if err != nil {
-			return err
-		}
-
-		err = store.wordTitleIndex.save(tx, docDb)
 		if err != nil {
 			return err
 		}
@@ -211,7 +207,26 @@ func (store *DocumentStore) Save(doc *domain.Document) error {
 		}
 
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+
+	// Index the document in the search index.
+	// Note: This happens outside the BoltDB transaction. If indexing fails,
+	// the document is still saved to the database but won't be searchable
+	// until a manual reindex is performed via ReindexSearch().
+	// We use RLock here to allow concurrent Save operations while preventing
+	// ReindexSearch from running concurrently.
+	if savedDoc != nil {
+		store.searchMu.RLock()
+		err := store.search.IndexDoc(savedDoc)
+		store.searchMu.RUnlock()
+		if err != nil {
+			log.Errorf("Bleve indexing failed: %v", err)
+		}
+	}
+
+	return nil
 }
 
 func (store *DocumentStore) loadDocument(tx *bolt.Tx, id domain.DocumentID) (*domain.Document, error) {
@@ -371,33 +386,69 @@ func (store *DocumentStore) LoadDocumentByTitle(title string) (*domain.Document,
 }
 
 func (store *DocumentStore) Search(query string) ([]domain.DocumentID, error) {
-	var resultIDs []domain.DocumentID
-	err := store.bolt.View(func(tx *bolt.Tx) error {
-		ids, err := store.wordBlockIndex.Search(tx, query)
-		if err != nil {
-			return err
-		}
-
-		for _, id := range ids {
-			resultIDs = append(resultIDs, domain.DocumentID(id))
-		}
-
-		ids, err = store.wordTitleIndex.Search(tx, query)
-		if err != nil {
-			return err
-		}
-
-		for _, id := range ids {
-			resultIDs = append(resultIDs, domain.DocumentID(id))
-		}
-		return nil
-	})
+	store.searchMu.RLock()
+	ids, err := store.search.Search(query)
+	store.searchMu.RUnlock()
 
 	if err != nil {
 		return nil, err
 	}
 
+	resultIDs := make([]domain.DocumentID, 0, len(ids))
+	for _, id := range ids {
+		resultIDs = append(resultIDs, domain.DocumentID(id))
+	}
+
 	return resultIDs, nil
+}
+
+// ReindexSearch rebuilds the search index from scratch by re-indexing all
+// documents in the database. This operation acquires an exclusive write lock,
+// blocking all concurrent Save() and Search() operations until the reindex
+// is complete. Use this when the search index becomes corrupted or out of sync.
+func (store *DocumentStore) ReindexSearch() error {
+	// Acquire write lock to ensure no other operations access the search index
+	// while we're closing, deleting, and recreating it.
+	store.searchMu.Lock()
+	defer store.searchMu.Unlock()
+
+	// Create new index first before closing the old one to avoid leaving
+	// store.search pointing to a closed index if recreation fails.
+	oldSearch := store.search
+
+	// Close and delete the old index directory
+	if err := oldSearch.Close(); err != nil {
+		return err
+	}
+	if err := oldSearch.DeleteIndexDir(); err != nil {
+		return err
+	}
+
+	// Create new index
+	newSearch, err := openBleveSearch(bleveIndexPath(store.path))
+	if err != nil {
+		// If we can't create a new index after successfully deleting the old one,
+		// surface the error to the caller rather than attempting a second,
+		// potentially empty, fallback index at the same path.
+		return err
+	}
+
+	// Assign new index to store
+	store.search = newSearch
+
+	// Reindex all documents
+	return store.bolt.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(store.bucketDocs)
+		return bucket.ForEach(func(k, v []byte) error {
+			var docDb DocDb
+			buf := bytes.NewBuffer(v)
+			dec := gob.NewDecoder(buf)
+			if err := dec.Decode(&docDb); err != nil {
+				return err
+			}
+			return store.search.IndexDoc(&docDb)
+		})
+	})
 }
 
 func (store *DocumentStore) GetReferences(title string) ([]domain.DocumentID, error) {
