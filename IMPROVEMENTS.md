@@ -2,49 +2,6 @@
 
 This document outlines the most important fixes and improvements identified through a comprehensive code review of the Glog note-taking outliner application.
 
----
-
-## 1. Remove Debug Logging in Production Build
-
-**Priority:** CRITICAL | **Effort:** 5 minutes
-
-- **Location:** `main.go:18`
-- **Issue:** `log.SetLevel(log.DEBUG)` is hardcoded, causing verbose logging in production
-- **Fix:** Make log level configurable via environment variable or build flag
-- **Impact:** Security (sensitive data in logs) and performance
-
-```go
-// Current (problematic)
-log.SetLevel(log.DEBUG)
-
-// Suggested fix
-if os.Getenv("GLOG_DEBUG") == "true" {
-    log.SetLevel(log.DEBUG)
-} else {
-    log.SetLevel(log.INFO)
-}
-```
-
-## 3. Fix Timezone Handling for "Today's Journal"
-
-**Priority:** HIGH | **Effort:** 30 minutes
-
-- **Location:** `app.go:49-54`
-- **Issue:** Uses UTC with 6 AM offset which is confusing for users in different timezones
-- **Fix:** Use local timezone or make configurable with clear documentation
-- **Impact:** User experience - "today" should match user's local time
-
-```go
-// Current (confusing)
-now := time.Now().UTC()
-today := time.Date(now.Year(), now.Month(), now.Day(), 6, 0, 0, 0, time.UTC)
-
-// Suggested fix - use local timezone
-now := time.Now()
-today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-```
-
----
 
 ## 4. Add Graceful Error Handling for Bleve Indexing
 

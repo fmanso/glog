@@ -46,12 +46,12 @@ func (a *App) SaveDocument(doc DocumentDto) error {
 }
 
 func (a *App) LoadJournalToday() (DocumentDto, error) {
-	// Get time of today but for 6:00 AM UTC
-	t := time.Now().UTC()
-	t = time.Date(t.Year(), t.Month(), t.Day(), 6, 0, 0, 0, time.UTC)
+	// Get current local time and normalize to start of day
+	now := time.Now()
+	t := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 
-	from := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
-	to := from.Add(1 * time.Hour)
+	from := t
+	to := t.Add(24 * time.Hour)
 	docs, err := a.db.LoadJournals(from, to)
 	if err == nil && docs != nil && len(docs) > 0 {
 		return ToDocumentDto(docs[0]), nil
@@ -101,7 +101,7 @@ func (a *App) createNewDocument(title string) (DocumentDto, error) {
 	doc := domain.Document{
 		ID:    domain.DocumentID(uuid.New()),
 		Title: title,
-		Date:  time.Now().UTC(),
+		Date:  time.Now(), // Use local time
 		Blocks: []*domain.Block{
 			{
 				ID:      domain.BlockID(uuid.New()),
@@ -240,7 +240,7 @@ func (a *App) GetReferences(title string) ([]DocumentReferenceDto, error) {
 }
 
 func (a *App) GetScheduledTasks() ([]ScheduledTaskDto, error) {
-	scheduleTasks, err := a.db.GetScheduledTasks(time.Now().UTC(), 5)
+	scheduleTasks, err := a.db.GetScheduledTasks(time.Now(), 5)
 	if err != nil {
 		return nil, err
 	}

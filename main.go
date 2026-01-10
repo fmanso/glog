@@ -3,6 +3,8 @@ package main
 import (
 	"embed"
 	"glog/db"
+	"os"
+	"strings"
 
 	"github.com/labstack/gommon/log"
 	"github.com/wailsapp/wails/v2"
@@ -14,8 +16,20 @@ import (
 var assets embed.FS
 
 func main() {
-	// Setup logging in Debug mode
-	log.SetLevel(log.DEBUG)
+	// Configure log level from environment variable (default: INFO)
+	logLevel := strings.ToUpper(os.Getenv("LOG_LEVEL"))
+	switch logLevel {
+	case "DEBUG":
+		log.SetLevel(log.DEBUG)
+	case "INFO":
+		log.SetLevel(log.INFO)
+	case "WARN":
+		log.SetLevel(log.WARN)
+	case "ERROR":
+		log.SetLevel(log.ERROR)
+	default:
+		log.SetLevel(log.INFO) // Production default
+	}
 
 	dbStore, err := db.NewDocumentStore("glog.db")
 	if err != nil {

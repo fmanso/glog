@@ -323,14 +323,25 @@ func (store *DocumentStore) LoadJournals(from time.Time, to time.Time) ([]*domai
 	var docs []*domain.Document
 	err := store.bolt.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(store.bucketTimeIndex)
-		// Start from 'from' setting hours, minutes, seconds, nanoseconds to zero
-		current := time.Date(from.Year(), from.Month(), from.Day(), 6, 0, 0, 0, time.UTC)
-		end := time.Date(to.Year(), to.Month(), to.Day(), 6, 0, 0, 0, time.UTC)
+		cursor := bucket.Cursor()
 
-		for !current.After(end) {
-			data := bucket.Get([]byte(current.Format(time.RFC3339)))
-			if data != nil {
-				id, err := uuid.Parse(string(data))
+		// Normalize to start of day in the given timezone
+		startDay := time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, from.Location())
+		endDay := time.Date(to.Year(), to.Month(), to.Day(), 0, 0, 0, 0, to.Location())
+
+		// Iterate through each day in the range
+		for currentDay := startDay; currentDay.Before(endDay) || currentDay.Equal(endDay); currentDay = currentDay.Add(24 * time.Hour) {
+			// Define the range for this day: from midnight to end of day
+			dayStart := currentDay.UTC()
+			dayEnd := currentDay.Add(24 * time.Hour).UTC()
+
+			// Seek to the start of the day range
+			minKey := []byte(dayStart.Format(time.RFC3339))
+			maxKey := []byte(dayEnd.Format(time.RFC3339))
+
+			// Iterate through all entries in this day's range
+			for k, v := cursor.Seek(minKey); k != nil && bytes.Compare(k, maxKey) < 0; k, v = cursor.Next() {
+				id, err := uuid.Parse(string(v))
 				if err != nil {
 					return err
 				}
@@ -339,15 +350,14 @@ func (store *DocumentStore) LoadJournals(from time.Time, to time.Time) ([]*domai
 				if err != nil {
 					if errors.Is(err, ErrDocumentNotFound) {
 						// Ignore missing document
+						continue
 					} else {
 						return err
 					}
-				} else {
-					docs = append(docs, d)
 				}
-			}
 
-			current = current.Add(24 * time.Hour)
+				docs = append(docs, d)
+			}
 		}
 
 		return nil
@@ -479,8 +489,9 @@ func (store *DocumentStore) GetScheduledTasks(date time.Time, days int) ([]domai
 	var tasks []domain.ScheduleTask
 	err := store.bolt.View(func(tx *bolt.Tx) error {
 		for d := 0; d < days; d++ {
-			scheduledTime := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC).Add(time.Duration(d) * 24 * time.Hour)
-			dbTasks, err := store.scheduledIndex.getScheduledTasks(tx, scheduledTime)
+			// Normalize to start of day in local timezone, then convert to UTC for storage lookup
+			scheduledTime := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location()).Add(time.Duration(d) * 24 * time.Hour)
+			dbTasks, err := store.scheduledIndex.getScheduledTasks(tx, scheduledTime.UTC())
 			if err != nil {
 				return err
 			}
