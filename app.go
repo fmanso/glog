@@ -273,3 +273,34 @@ func (a *App) GetScheduledTasks() ([]ScheduledTaskDto, error) {
 
 	return scheduledTaskDtos, nil
 }
+
+// IndexHealthDto represents the health status of the search index for the UI
+type IndexHealthDto struct {
+	IsHealthy          bool   `json:"isHealthy"`
+	FailedDocuments    int    `json:"failedDocuments"`
+	LastHealthCheck    string `json:"lastHealthCheck"`
+	RequiresReindex    bool   `json:"requiresReindex"`
+	HealthCheckMessage string `json:"healthCheckMessage"`
+}
+
+// GetIndexHealth returns the current health status of the search index
+func (a *App) GetIndexHealth() IndexHealthDto {
+	health := a.db.GetIndexHealth()
+	return IndexHealthDto{
+		IsHealthy:          health.IsHealthy,
+		FailedDocuments:    health.FailedDocuments,
+		LastHealthCheck:    health.LastHealthCheck.Format(time.RFC3339),
+		RequiresReindex:    health.RequiresReindex,
+		HealthCheckMessage: health.HealthCheckMessage,
+	}
+}
+
+// ReindexSearch rebuilds the entire search index from scratch
+func (a *App) ReindexSearch() error {
+	return a.db.ReindexSearch()
+}
+
+// RetryFailedIndexing attempts to reindex documents that previously failed
+func (a *App) RetryFailedIndexing() (int, error) {
+	return a.db.RetryFailedIndexing()
+}

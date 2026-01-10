@@ -12,7 +12,7 @@ type DocDb struct {
 type BlockDb struct {
 	ID      uuid.UUID
 	Content string
-	Ident   int
+	Indent  int
 }
 
 type ScheduleTaskDb struct {

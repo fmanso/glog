@@ -16,6 +16,23 @@ import (
 
 var ErrDocumentNotFound = errors.New("document not found")
 
+// failedIndexEntry tracks a document that failed to index
+type failedIndexEntry struct {
+	docID       string
+	attempts    int
+	lastAttempt time.Time
+	doc         *DocDb
+}
+
+// IndexHealth represents the health status of the search index
+type IndexHealth struct {
+	IsHealthy          bool
+	FailedDocuments    int
+	LastHealthCheck    time.Time
+	RequiresReindex    bool
+	HealthCheckMessage string
+}
+
 // DocumentStore provides thread-safe access to document storage and search.
 //
 // Thread-Safety:
@@ -40,6 +57,12 @@ type DocumentStore struct {
 	searchMu         sync.RWMutex // protects search index operations
 	referencesIndex  *referencesIndex
 	scheduledIndex   *scheduledTasks
+
+	// Index health tracking
+	failedIndexes   map[string]*failedIndexEntry
+	failedIndexesMu sync.Mutex
+	indexHealth     IndexHealth
+	indexHealthMu   sync.RWMutex
 }
 
 func NewDocumentStore(path string) (*DocumentStore, error) {
@@ -96,7 +119,7 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 		return nil, err
 	}
 
-	return &DocumentStore{
+	store := &DocumentStore{
 		bolt:             db,
 		path:             path,
 		bucketDocs:       docsKey,
@@ -105,7 +128,17 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 		search:           search,
 		referencesIndex:  referencesIndex,
 		scheduledIndex:   scheduledIndex,
-	}, nil
+		failedIndexes:    make(map[string]*failedIndexEntry),
+		indexHealth: IndexHealth{
+			IsHealthy:       true,
+			LastHealthCheck: time.Now(),
+		},
+	}
+
+	// Perform initial health check
+	store.checkIndexHealth()
+
+	return store, nil
 }
 
 func (store *DocumentStore) Close() error {
@@ -118,6 +151,111 @@ func (store *DocumentStore) Close() error {
 		return errors.Join(err, boltErr)
 	}
 	return store.bolt.Close()
+}
+
+// checkIndexHealth performs a health check on the search index
+func (store *DocumentStore) checkIndexHealth() {
+	store.indexHealthMu.Lock()
+	defer store.indexHealthMu.Unlock()
+
+	store.indexHealth.LastHealthCheck = time.Now()
+	store.indexHealth.FailedDocuments = len(store.failedIndexes)
+
+	// Check if index is accessible
+	if store.search == nil || store.search.index == nil {
+		store.indexHealth.IsHealthy = false
+		store.indexHealth.RequiresReindex = true
+		store.indexHealth.HealthCheckMessage = "Search index is not initialized"
+		return
+	}
+
+	// Consider unhealthy if there are failed documents
+	if store.indexHealth.FailedDocuments > 0 {
+		store.indexHealth.IsHealthy = false
+		store.indexHealth.HealthCheckMessage = "Some documents failed to index"
+	} else {
+		store.indexHealth.IsHealthy = true
+		store.indexHealth.HealthCheckMessage = "Index is healthy"
+	}
+}
+
+// GetIndexHealth returns the current health status of the search index
+func (store *DocumentStore) GetIndexHealth() IndexHealth {
+	store.indexHealthMu.RLock()
+	defer store.indexHealthMu.RUnlock()
+	return store.indexHealth
+}
+
+// indexDocWithRetry attempts to index a document with exponential backoff
+func (store *DocumentStore) indexDocWithRetry(doc *DocDb, maxAttempts int) error {
+	docID := doc.ID.String()
+
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		err := store.search.IndexDoc(doc)
+		if err == nil {
+			// Success - remove from failed index tracking if it was there
+			store.failedIndexesMu.Lock()
+			delete(store.failedIndexes, docID)
+			store.failedIndexesMu.Unlock()
+			return nil
+		}
+
+		// Log the error
+		log.Warnf("Bleve indexing attempt %d/%d failed for document %s: %v", attempt, maxAttempts, docID, err)
+
+		// If this is not the last attempt, wait with exponential backoff
+		if attempt < maxAttempts {
+			backoff := time.Duration(attempt*attempt) * 100 * time.Millisecond
+			time.Sleep(backoff)
+		}
+	}
+
+	// All attempts failed - track the failure
+	store.failedIndexesMu.Lock()
+	entry, exists := store.failedIndexes[docID]
+	if !exists {
+		entry = &failedIndexEntry{
+			docID: docID,
+			doc:   doc,
+		}
+		store.failedIndexes[docID] = entry
+	}
+	entry.attempts++
+	entry.lastAttempt = time.Now()
+	store.failedIndexesMu.Unlock()
+
+	// Update health check
+	store.checkIndexHealth()
+
+	return errors.New("failed to index document after multiple attempts")
+}
+
+// RetryFailedIndexing attempts to reindex all documents that previously failed
+func (store *DocumentStore) RetryFailedIndexing() (int, error) {
+	store.failedIndexesMu.Lock()
+	failedDocs := make([]*DocDb, 0, len(store.failedIndexes))
+	for _, entry := range store.failedIndexes {
+		failedDocs = append(failedDocs, entry.doc)
+	}
+	store.failedIndexesMu.Unlock()
+
+	if len(failedDocs) == 0 {
+		return 0, nil
+	}
+
+	successCount := 0
+	store.searchMu.RLock()
+	defer store.searchMu.RUnlock()
+
+	for _, doc := range failedDocs {
+		err := store.indexDocWithRetry(doc, 3)
+		if err == nil {
+			successCount++
+		}
+	}
+
+	store.checkIndexHealth()
+	return successCount, nil
 }
 
 func (store *DocumentStore) saveDoc(tx *bolt.Tx, doc *domain.Document) (*DocDb, error) {
@@ -135,7 +273,7 @@ func (store *DocumentStore) saveDoc(tx *bolt.Tx, doc *domain.Document) (*DocDb, 
 		docDb.Blocks[i] = &BlockDb{
 			ID:      uuid.UUID(block.ID),
 			Content: block.Content,
-			Ident:   block.Indent,
+			Indent:  block.Indent,
 		}
 	}
 
@@ -211,18 +349,19 @@ func (store *DocumentStore) Save(doc *domain.Document) error {
 		return err
 	}
 
-	// Index the document in the search index.
-	// Note: This happens outside the BoltDB transaction. If indexing fails,
-	// the document is still saved to the database but won't be searchable
-	// until a manual reindex is performed via ReindexSearch().
+	// Index the document in the search index with retry logic.
+	// Note: This happens outside the BoltDB transaction. If indexing fails
+	// after retries, the document is still saved to the database but won't
+	// be searchable until RetryFailedIndexing() or ReindexSearch() is called.
 	// We use RLock here to allow concurrent Save operations while preventing
 	// ReindexSearch from running concurrently.
 	if savedDoc != nil {
 		store.searchMu.RLock()
-		err := store.search.IndexDoc(savedDoc)
+		err := store.indexDocWithRetry(savedDoc, 3) // Retry up to 3 times
 		store.searchMu.RUnlock()
 		if err != nil {
-			log.Errorf("Bleve indexing failed: %v", err)
+			log.Errorf("Bleve indexing failed after retries: %v", err)
+			// Don't return error - document is saved, just not indexed
 		}
 	}
 
@@ -256,7 +395,7 @@ func (store *DocumentStore) loadDocument(tx *bolt.Tx, id domain.DocumentID) (*do
 		doc.Blocks[i] = &domain.Block{
 			ID:      domain.BlockID(blockDb.ID),
 			Content: blockDb.Content,
-			Indent:  blockDb.Ident,
+			Indent:  blockDb.Indent,
 		}
 	}
 

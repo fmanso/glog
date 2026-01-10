@@ -2,53 +2,6 @@
 
 This document outlines the most important fixes and improvements identified through a comprehensive code review of the Glog note-taking outliner application.
 
-
-## 4. Add Graceful Error Handling for Bleve Indexing
-
-**Priority:** HIGH | **Effort:** 2 hours
-
-- **Location:** `db/db.go:207-211`
-- **Issue:** Bleve indexing errors are only logged, causing index to become stale. Race condition if app crashes between Bolt commit and Bleve index.
-- **Fix:**
-  - Add retry logic with exponential backoff
-  - Expose `ReindexSearch()` through UI (settings panel)
-  - Add index health check on startup
-- **Impact:** Data integrity and search reliability
-
-```go
-// Add retry logic
-func (store *DocumentStore) indexWithRetry(doc *DocDb, maxRetries int) error {
-    var err error
-    for i := 0; i < maxRetries; i++ {
-        err = store.search.IndexDoc(doc)
-        if err == nil {
-            return nil
-        }
-        time.Sleep(time.Duration(i*100) * time.Millisecond)
-    }
-    return err
-}
-```
-
----
-
-## 5. Fix Field Name Typo: `Ident` to `Indent`
-
-**Priority:** MEDIUM | **Effort:** 15 minutes
-
-- **Location:** `db/model.go:15`
-- **Issue:** Field named `Ident` when it should be `Indent` (indentation level)
-- **Fix:** Rename field throughout codebase
-- **Impact:** Code readability and developer experience
-
-**Files affected:**
-- `db/model.go`
-- `dto.go`
-- Frontend TypeScript models
-- All conversion functions
-
----
-
 ## 6. Implement Document Deletion
 
 **Priority:** HIGH | **Effort:** 4 hours
