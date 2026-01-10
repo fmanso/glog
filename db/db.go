@@ -421,10 +421,6 @@ func (store *DocumentStore) ReindexSearch() error {
 		return err
 	}
 	if err := oldSearch.DeleteIndexDir(); err != nil {
-		// If deletion fails, try to reopen the old index as a fallback
-		if reopened, reopenErr := openBleveSearch(bleveIndexPath(store.path)); reopenErr == nil {
-			store.search = reopened
-		}
 		return err
 	}
 
