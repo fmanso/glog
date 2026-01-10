@@ -412,19 +412,38 @@ func (store *DocumentStore) ReindexSearch() error {
 	store.searchMu.Lock()
 	defer store.searchMu.Unlock()
 
-	if err := store.search.Close(); err != nil {
+	// Create new index first before closing the old one to avoid leaving
+	// store.search pointing to a closed index if recreation fails.
+	oldSearch := store.search
+
+	// Close and delete the old index directory
+	if err := oldSearch.Close(); err != nil {
 		return err
 	}
-	if err := store.search.DeleteIndexDir(); err != nil {
+	if err := oldSearch.DeleteIndexDir(); err != nil {
+		// If deletion fails, try to reopen the old index as a fallback
+		if reopened, reopenErr := openBleveSearch(bleveIndexPath(store.path)); reopenErr == nil {
+			store.search = reopened
+		}
 		return err
 	}
 
-	search, err := openBleveSearch(bleveIndexPath(store.path))
+	// Create new index
+	newSearch, err := openBleveSearch(bleveIndexPath(store.path))
 	if err != nil {
-		return err
+		// If we can't create a new index, try to recreate an empty one as a fallback
+		// to avoid leaving store.search pointing to a closed index
+		if fallback, fallbackErr := openBleveSearch(bleveIndexPath(store.path)); fallbackErr == nil {
+			store.search = fallback
+			return errors.Join(err, errors.New("reindex failed but created empty fallback index"))
+		}
+		return errors.Join(err, errors.New("failed to create fallback index"))
 	}
-	store.search = search
 
+	// Assign new index to store
+	store.search = newSearch
+
+	// Reindex all documents
 	return store.bolt.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(store.bucketDocs)
 		return bucket.ForEach(func(k, v []byte) error {

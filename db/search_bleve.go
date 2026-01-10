@@ -103,6 +103,11 @@ func (s *bleveSearch) Search(query string) ([]uuid.UUID, error) {
 
 	phrases, tokens := parseSearchQuery(query)
 
+	// Return empty result set if query contains no valid phrases or tokens
+	if len(phrases) == 0 && len(tokens) == 0 {
+		return []uuid.UUID{}, nil
+	}
+
 	conj := bleve.NewConjunctionQuery()
 
 	for _, phrase := range phrases {
@@ -157,6 +162,20 @@ func (s *bleveSearch) Search(query string) ([]uuid.UUID, error) {
 
 var quoteRe = regexp.MustCompile(`"([^"]+)"`)
 
+// parseSearchQuery extracts phrases and tokens from a search query string.
+//
+// Phrases are text enclosed in matching double quotes (e.g., "exact phrase").
+// Only properly matched quote pairs are recognized as phrases; unmatched quotes
+// are treated as regular characters and will be included in the token search.
+//
+// For example:
+//   - Query: 'search "exact match"' -> phrases: ["exact match"], tokens: ["search"]
+//   - Query: 'search "unclosed' -> phrases: [], tokens: ["search", "unclosed"]
+//   - Query: 'one "two" three "four' -> phrases: ["two"], tokens: ["one", "three", "four"]
+//
+// Tokens are individual words (whitespace-separated) extracted from the query
+// after removing matched quoted phrases. Single-character tokens are ignored.
+// All text is converted to lowercase for case-insensitive matching.
 func parseSearchQuery(query string) (phrases []string, tokens []string) {
 	matches := quoteRe.FindAllStringSubmatch(query, -1)
 	for _, match := range matches {
