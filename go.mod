@@ -60,5 +60,3 @@ require (
 	golang.org/x/text v0.22.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 )
-
-// replace github.com/wailsapp/wails/v2 v2.11.0 => C:\Users\brok3\go\pkg\mod
