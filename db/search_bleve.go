@@ -137,6 +137,7 @@ func (s *bleveSearch) Search(query string) ([]uuid.UUID, error) {
 
 	searchRequest := bleve.NewSearchRequest(conj)
 	searchRequest.Fields = []string{}
+	searchRequest.Size = 10000 // Set a high limit for search results
 	searchResult, err := s.index.Search(searchRequest)
 	if err != nil {
 		return nil, err

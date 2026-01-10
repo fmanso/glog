@@ -8,8 +8,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/boltdb/bolt"
 	"github.com/google/uuid"
+	bolt "go.etcd.io/bbolt"
 )
 
 var referenceRegex = regexp.MustCompile(`\[\[([^\[\]]+)\]\]`)

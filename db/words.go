@@ -6,8 +6,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/boltdb/bolt"
 	"github.com/google/uuid"
+	bolt "go.etcd.io/bbolt"
 )
 
 type getWordsFunc func(doc *DocDb) []string
