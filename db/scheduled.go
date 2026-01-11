@@ -314,6 +314,45 @@ func (s *scheduledTasks) getScheduledTasks(tx *bolt.Tx, date time.Time) ([]Sched
 	return tasks, nil
 }
 
+// delete removes all scheduled task entries for a document
+func (s *scheduledTasks) delete(tx *bolt.Tx, doc *DocDb) error {
+	// For each block, get its scheduled dates and remove the tasks
+	invertedBucket := tx.Bucket(s.scheduledInvertedIndex)
+	if invertedBucket == nil {
+		return nil
+	}
+
+	for _, block := range doc.Blocks {
+		key := fmt.Sprintf("%s_%s", doc.ID.String(), block.ID.String())
+		data := invertedBucket.Get([]byte(key))
+		if data == nil {
+			continue
+		}
+
+		dateSet, err := decodeScheduledDates(data)
+		if err != nil {
+			continue // Skip on decode error
+		}
+
+		// Remove the task from each date's index
+		for dateStr := range dateSet {
+			date, err := time.Parse("2006-01-02", dateStr)
+			if err != nil {
+				continue
+			}
+			// Ignore errors here - the task may already be removed
+			_ = s.removeScheduledTask(tx, date, doc.ID, block.ID)
+		}
+
+		// Delete the inverted index entry for this block
+		if err := invertedBucket.Delete([]byte(key)); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func encodeScheduleTaskDb(tasks []ScheduleTaskDb) ([]byte, error) {
 	// Encode using gob
 	var buf bytes.Buffer

@@ -181,6 +181,33 @@ func (ri *referencesIndex) getReferences(title string) ([]uuid.UUID, error) {
 	return result, nil
 }
 
+// delete removes all reference entries for a document
+func (ri *referencesIndex) delete(tx *bolt.Tx, doc *DocDb) error {
+	// Get the titles this document references
+	docRefBucket := tx.Bucket(ri.docReferenceIndex)
+	if docRefBucket == nil {
+		return nil
+	}
+
+	data := docRefBucket.Get([]byte(doc.ID.String()))
+	if data != nil {
+		var oldTitles map[string]struct{}
+		buf := bytes.NewBuffer(data)
+		dec := gob.NewDecoder(buf)
+		if err := dec.Decode(&oldTitles); err == nil {
+			// Remove this document from each referenced title's index
+			for title := range oldTitles {
+				if err := ri.deleteDocFromReferences(tx, title, doc.ID); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	// Delete the document's entry from the doc reference index
+	return docRefBucket.Delete([]byte(doc.ID.String()))
+}
+
 // getReferencedTitles extracts referenced titles from the document
 // Referenced titles are enclosed by double square brackets [[Title]]
 func getReferencedTitles(doc *DocDb) []string {

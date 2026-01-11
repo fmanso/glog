@@ -45,6 +45,15 @@ func (a *App) SaveDocument(doc DocumentDto) error {
 	return nil
 }
 
+// DeleteDocument removes a document and all its index entries from the store.
+func (a *App) DeleteDocument(id string) error {
+	docID, err := uuid.Parse(id)
+	if err != nil {
+		return err
+	}
+	return a.db.Delete(docID)
+}
+
 func (a *App) LoadJournalToday() (DocumentDto, error) {
 	// Get current local time and normalize to start of day
 	now := time.Now()

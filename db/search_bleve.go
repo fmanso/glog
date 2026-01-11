@@ -74,6 +74,13 @@ func (s *bleveSearch) DeleteIndexDir() error {
 	return os.RemoveAll(s.path)
 }
 
+func (s *bleveSearch) DeleteDoc(docID string) error {
+	if s == nil || s.index == nil {
+		return nil
+	}
+	return s.index.Delete(docID)
+}
+
 func (s *bleveSearch) IndexDoc(doc *DocDb) error {
 	if s == nil || s.index == nil {
 		return nil

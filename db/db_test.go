@@ -1132,3 +1132,180 @@ func TestJournalSameDayDifferentTimes(t *testing.T) {
 		t.Errorf("Expected 1 journal, got %v", len(journals))
 	}
 }
+
+func TestDocumentStore_Delete(t *testing.T) {
+	store, err := NewDocumentStore("./testdelete.db")
+	if err != nil {
+		t.Fatalf("Failed to create DocumentStore: %v", err)
+	}
+	defer func() {
+		err := store.Close()
+		if err != nil {
+			t.Errorf("Failed to close DocumentStore: %v", err)
+		}
+
+		_ = os.Remove("./testdelete.db")
+		_ = os.RemoveAll("./testdelete.db.bleve")
+	}()
+
+	// Create a document with references and scheduled tasks
+	doc := &domain.Document{
+		ID:        domain.DocumentID(uuid.New()),
+		Title:     "Document To Delete",
+		Date:      time.Date(2024, 6, 15, 10, 0, 0, 0, time.UTC),
+		IsJournal: false,
+		Blocks: []*domain.Block{
+			{
+				ID:      domain.BlockID(uuid.New()),
+				Content: "Some content with [[Reference]]",
+				Indent:  0,
+			},
+			{
+				ID:      domain.BlockID(uuid.New()),
+				Content: "A scheduled task /scheduled 2024-06-20",
+				Indent:  0,
+			},
+		},
+	}
+
+	err = store.Save(doc)
+	if err != nil {
+		t.Fatalf("Failed to save document: %v", err)
+	}
+
+	// Verify document exists
+	_, err = store.LoadDocument(doc.ID)
+	if err != nil {
+		t.Fatalf("Document should exist before deletion: %v", err)
+	}
+
+	// Verify it's searchable
+	searchResults, err := store.Search("Delete")
+	if err != nil {
+		t.Fatalf("Search should work: %v", err)
+	}
+	if len(searchResults) != 1 {
+		t.Errorf("Expected 1 search result, got %v", len(searchResults))
+	}
+
+	// Delete the document
+	err = store.Delete(uuid.UUID(doc.ID))
+	if err != nil {
+		t.Fatalf("Failed to delete document: %v", err)
+	}
+
+	// Verify document no longer exists
+	_, err = store.LoadDocument(doc.ID)
+	if err != ErrDocumentNotFound {
+		t.Errorf("Document should not exist after deletion, got error: %v", err)
+	}
+
+	// Verify it's no longer searchable
+	searchResults, err = store.Search("Delete")
+	if err != nil {
+		t.Fatalf("Search should work: %v", err)
+	}
+	if len(searchResults) != 0 {
+		t.Errorf("Expected 0 search results after deletion, got %v", len(searchResults))
+	}
+
+	// Verify it's not in the document list
+	docs, err := store.ListDocuments()
+	if err != nil {
+		t.Fatalf("Failed to list documents: %v", err)
+	}
+	if len(docs) != 0 {
+		t.Errorf("Expected 0 documents in list after deletion, got %v", len(docs))
+	}
+
+	// Verify it can't be loaded by title
+	_, err = store.LoadDocumentByTitle("Document To Delete")
+	if err != ErrDocumentNotFound {
+		t.Errorf("Document should not be found by title after deletion, got error: %v", err)
+	}
+}
+
+func TestDocumentStore_DeleteNonExistent(t *testing.T) {
+	store, err := NewDocumentStore("./testdeletenonexistent.db")
+	if err != nil {
+		t.Fatalf("Failed to create DocumentStore: %v", err)
+	}
+	defer func() {
+		err := store.Close()
+		if err != nil {
+			t.Errorf("Failed to close DocumentStore: %v", err)
+		}
+
+		_ = os.Remove("./testdeletenonexistent.db")
+		_ = os.RemoveAll("./testdeletenonexistent.db.bleve")
+	}()
+
+	// Try to delete a document that doesn't exist
+	err = store.Delete(uuid.New())
+	if err != ErrDocumentNotFound {
+		t.Errorf("Expected ErrDocumentNotFound when deleting non-existent document, got: %v", err)
+	}
+}
+
+func TestDocumentStore_DeleteJournal(t *testing.T) {
+	store, err := NewDocumentStore("./testdeletejournal.db")
+	if err != nil {
+		t.Fatalf("Failed to create DocumentStore: %v", err)
+	}
+	defer func() {
+		err := store.Close()
+		if err != nil {
+			t.Errorf("Failed to close DocumentStore: %v", err)
+		}
+
+		_ = os.Remove("./testdeletejournal.db")
+		_ = os.RemoveAll("./testdeletejournal.db.bleve")
+	}()
+
+	// Create a journal entry
+	journal := &domain.Document{
+		ID:        domain.DocumentID(uuid.New()),
+		Title:     "Monday, June 15, 2024",
+		Date:      time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC),
+		IsJournal: true,
+		Blocks: []*domain.Block{
+			{
+				ID:      domain.BlockID(uuid.New()),
+				Content: "Journal entry content",
+				Indent:  0,
+			},
+		},
+	}
+
+	err = store.Save(journal)
+	if err != nil {
+		t.Fatalf("Failed to save journal: %v", err)
+	}
+
+	// Verify journal can be loaded by date
+	from := time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC)
+
+	journals, err := store.LoadJournals(from, to)
+	if err != nil {
+		t.Fatalf("Failed to load journals: %v", err)
+	}
+	if len(journals) != 1 {
+		t.Errorf("Expected 1 journal before deletion, got %v", len(journals))
+	}
+
+	// Delete the journal
+	err = store.Delete(uuid.UUID(journal.ID))
+	if err != nil {
+		t.Fatalf("Failed to delete journal: %v", err)
+	}
+
+	// Verify journal can no longer be loaded by date
+	journals, err = store.LoadJournals(from, to)
+	if err != nil {
+		t.Fatalf("Failed to load journals: %v", err)
+	}
+	if len(journals) != 0 {
+		t.Errorf("Expected 0 journals after deletion, got %v", len(journals))
+	}
+}

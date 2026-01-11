@@ -267,7 +267,6 @@ func (store *DocumentStore) RetryFailedIndexing() (int, error) {
 }
 
 func (store *DocumentStore) saveDoc(tx *bolt.Tx, doc *domain.Document) (*DocDb, error) {
-	log.Printf("Saving document: %v\n", doc)
 
 	// Create DocDb from domain.Document
 	docDb := DocDb{
@@ -299,7 +298,6 @@ func (store *DocumentStore) saveDoc(tx *bolt.Tx, doc *domain.Document) (*DocDb, 
 }
 
 func (store *DocumentStore) saveTimeIndex(tx *bolt.Tx, doc *domain.Document) error {
-	log.Printf("Saving time index: %v\n", doc)
 	bucket := tx.Bucket(store.bucketTimeIndex)
 	// The chance of accidentally overwriting an existing key is negligible
 	// since we use RFC3339 formatted timestamps with nanosecond precision.
@@ -312,8 +310,6 @@ func (store *DocumentStore) saveTimeIndex(tx *bolt.Tx, doc *domain.Document) err
 }
 
 func (store *DocumentStore) saveTitleIndex(tx *bolt.Tx, doc *domain.Document) error {
-	log.Printf("Saving title index: %v\n", doc)
-
 	bucket := tx.Bucket(store.bucketTitleIndex)
 	titleLower := strings.ToLower(doc.Title)
 	err := bucket.Put([]byte(titleLower), []byte(doc.ID.String()))
@@ -330,7 +326,6 @@ func (store *DocumentStore) saveJournalIndex(tx *bolt.Tx, doc *domain.Document) 
 		// Index by date (normalized to start of day in UTC) -> document ID
 		// This allows efficient lookup of journals by date
 		dateKey := time.Date(doc.Date.Year(), doc.Date.Month(), doc.Date.Day(), 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
-		log.Printf("Saving journal index: date=%s, id=%s\n", dateKey, doc.ID.String())
 		return bucket.Put([]byte(dateKey), []byte(doc.ID.String()))
 	}
 	return nil
@@ -672,4 +667,98 @@ func (store *DocumentStore) GetScheduledTasks(date time.Time, days int) ([]domai
 	}
 
 	return tasks, nil
+}
+
+// Delete removes a document and all its index entries from the store.
+// This includes removing from: documents bucket, time_index, title_index,
+// journal_index, references_index, scheduled_index, and Bleve search index.
+func (store *DocumentStore) Delete(id uuid.UUID) error {
+	var docDb *DocDb
+
+	// First, load the document to get its metadata for index cleanup
+	err := store.bolt.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(store.bucketDocs)
+		data := bucket.Get([]byte(id.String()))
+		if data == nil {
+			return ErrDocumentNotFound
+		}
+
+		var doc DocDb
+		buf := bytes.NewBuffer(data)
+		dec := gob.NewDecoder(buf)
+		if err := dec.Decode(&doc); err != nil {
+			return err
+		}
+		docDb = &doc
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	// Delete from all BoltDB indexes in a single transaction
+	if err := store.bolt.Update(func(tx *bolt.Tx) error {
+		// Delete from documents bucket
+		docsBucket := tx.Bucket(store.bucketDocs)
+		if err := docsBucket.Delete([]byte(id.String())); err != nil {
+			return err
+		}
+
+		// Delete from time_index
+		timeBucket := tx.Bucket(store.bucketTimeIndex)
+		if timeBucket != nil {
+			date, _ := time.Parse(time.RFC3339, docDb.Date)
+			timeKey := date.UTC().Format(time.RFC3339)
+			_ = timeBucket.Delete([]byte(timeKey))
+		}
+
+		// Delete from title_index
+		titleBucket := tx.Bucket(store.bucketTitleIndex)
+		if titleBucket != nil {
+			titleKey := strings.ToLower(docDb.Title)
+			_ = titleBucket.Delete([]byte(titleKey))
+		}
+
+		// Delete from journal_index (if it's a journal)
+		if docDb.IsJournal {
+			journalBucket := tx.Bucket(store.bucketJournalIndex)
+			if journalBucket != nil {
+				date, _ := time.Parse(time.RFC3339, docDb.Date)
+				dateKey := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
+				_ = journalBucket.Delete([]byte(dateKey))
+			}
+		}
+
+		// Delete from references_index
+		if err := store.referencesIndex.delete(tx, docDb); err != nil {
+			return err
+		}
+
+		// Delete from scheduled_index
+		if err := store.scheduledIndex.delete(tx, docDb); err != nil {
+			return err
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	// Delete from Bleve search index
+	store.searchMu.RLock()
+	err = store.search.DeleteDoc(id.String())
+	store.searchMu.RUnlock()
+
+	if err != nil {
+		log.Warnf("Failed to delete document from search index: %v", err)
+		// Don't return error - document is deleted from main storage
+	}
+
+	// Remove from failed indexes tracking if present
+	store.failedIndexesMu.Lock()
+	delete(store.failedIndexes, id.String())
+	store.failedIndexesMu.Unlock()
+
+	return nil
 }
