@@ -219,11 +219,25 @@ func (a *App) GetReferences(title string) ([]DocumentReferenceDto, error) {
 		for i := 0; i < len(domainDoc.Blocks); i++ {
 			block := domainDoc.Blocks[i]
 			if strings.Contains(strings.ToLower(block.Content), titleLower) {
+				// Add the referencing block
 				blocks = append(blocks, BlockReferenceDto{
 					Id:      block.ID.String(),
 					Content: block.Content,
 					Indent:  block.Indent,
 				})
+				// Add child blocks (blocks with greater indent until we hit same or lower indent)
+				parentIndent := block.Indent
+				for j := i + 1; j < len(domainDoc.Blocks); j++ {
+					childBlock := domainDoc.Blocks[j]
+					if childBlock.Indent <= parentIndent {
+						break
+					}
+					blocks = append(blocks, BlockReferenceDto{
+						Id:      childBlock.ID.String(),
+						Content: childBlock.Content,
+						Indent:  childBlock.Indent,
+					})
+				}
 			}
 		}
 

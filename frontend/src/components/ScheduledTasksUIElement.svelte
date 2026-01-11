@@ -21,28 +21,28 @@
     }
 </script>
 
-<main class="tasks">
-    <section class="scheduled">
-        <p class="section-title">Scheduled for the following days</p>
-        {#if tasks && tasks.length}
-            {#each tasks as task}
-                <div class="task-item">
-                    <div class="task-title">
-                        <a class="task-link" href={`#/doc/${task.doc_id}`}>{task.title}</a>
-                    </div>
-                    <div class="task-desc">{@html cleanDescription(task.description)}</div>
-                    {#if task.due_date}
-                        <div class="task-meta">
-                            <span class="pill">Scheduled {formatDate(task.due_date)}</span>
+{#if tasks && tasks.length}
+    <main class="tasks">
+        <section class="scheduled">
+            <p class="section-title">Scheduled for the following days</p>
+
+                {#each tasks as task}
+                    <div class="task-item">
+                        <div class="task-title">
+                            <a class="task-link" href={`#/doc/${task.doc_id}`}>{task.title}</a>
                         </div>
-                    {/if}
-                </div>
-            {/each}
-        {:else}
-            <p class="empty">No scheduled tasks.</p>
-        {/if}
-    </section>
-</main>
+                        <div class="task-desc">{@html cleanDescription(task.description)}</div>
+                        {#if task.due_date}
+                            <div class="task-meta">
+                                <span class="pill">Scheduled {formatDate(task.due_date)}</span>
+                            </div>
+                        {/if}
+                    </div>
+                {/each}
+        </section>
+    </main>
+{/if}
+
 
 <style lang="css">
     .scheduled {

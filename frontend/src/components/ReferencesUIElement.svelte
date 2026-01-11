@@ -90,124 +90,83 @@
 
 {#if references?.length}
 <main class="references-panel" aria-label="Document references">
-        <div class="references-header">
-            <h3>References</h3>
-        </div>
-        {#each references as ref}
-            <div class="reference-item">
-                <div class="reference-header">
-                    <a href={"#/doc/" + ref.Id}>{ref.Title}</a>
-                </div>
-                {#if ref.Blocks?.length}
-                    <div class="reference-blocks">
-                        {#each ref.Blocks as block}
-                            <div class="reference-block">
-                                {@html renderBlock(block.Content)}
-                            </div>
-                        {/each}
-                    </div>
-                {:else}
-                    <div class="reference-block reference-block--empty">No specific block provided.</div>
-                {/if}
+    <p class="section-title">References</p>
+    {#each references as ref}
+        <div class="reference-item">
+            <div class="reference-header">
+                <a href={"#/doc/" + ref.Id}>{ref.Title}</a>
             </div>
-        {/each}
+            {#if ref.Blocks?.length}
+                <div class="reference-blocks">
+                    {#each ref.Blocks as block}
+                        <div class="reference-block" style="margin-left: {block.Indent * 20}px">
+                            {@html renderBlock(block.Content)}
+                        </div>
+                    {/each}
+                </div>
+            {/if}
+        </div>
+    {/each}
 </main>
 {/if}
 
 <style>
     .references-panel {
-        margin-top: 24px;
-        padding: 16px 18px;
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        background: var(--surface-1);
-        box-shadow: var(--shadow);
+        margin-top: 12px;
+        padding: 10px 12px;
+        border: none;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.04);
+        box-shadow: none;
     }
 
-    .references-header {
-        display: flex;
-        align-items: baseline;
-        gap: 10px;
-        margin-bottom: 8px;
-    }
-
-    .references-header h3 {
-        margin: 0;
-        color: var(--text);
-        font-size: 16px;
-        letter-spacing: 0.01em;
-    }
-
-    .references-hint {
-        margin: 0;
-        color: var(--text-dim);
+    .section-title {
+        margin: 0 0 10px 0;
         font-size: 13px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--text-dim);
     }
 
     .reference-item {
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 12px 14px;
-        margin-top: 10px;
-        background: var(--surface-2);
-        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+        padding: 10px 0;
+    }
+
+    .reference-item + .reference-item {
+        border-top: none;
     }
 
     .reference-header {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 6px;
-    }
-
-    .reference-label {
-        padding: 4px 8px;
-        border-radius: 999px;
-        background: var(--accent-weak);
-        color: var(--accent-strong);
-        font-size: 12px;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
+        font-weight: 600;
+        margin: 0 0 4px 0;
+        color: var(--text);
+        line-height: 1.25;
     }
 
     .reference-header a {
-        color: var(--text);
-        font-weight: 600;
+        color: var(--accent);
         text-decoration: none;
     }
 
-    .reference-header a:hover { color: var(--accent); text-decoration: underline; }
+    .reference-header a:hover {
+        color: var(--accent-strong);
+        text-decoration: underline;
+    }
 
     .reference-blocks {
         display: flex;
         flex-direction: column;
-        gap: 8px;
-        padding-left: 10px;
-        border-left: 1px dashed rgba(255, 255, 255, 0.08);
+        gap: 2px;
     }
 
     .reference-block {
-        padding: 10px 12px;
-        background: rgba(255, 255, 255, 0.02);
-        border-radius: 8px;
-        border: 1px solid var(--border);
-        color: var(--text);
-        line-height: 1.45;
+        color: var(--text-dim);
         font-size: 0.95rem;
+        line-height: 1.4;
+        padding: 2px 0;
     }
 
-    .reference-block--empty {
-        color: var(--text-dim);
-        font-style: italic;
-        border: none;
-        background: transparent;
-    }
-
-    .references-empty {
+    .reference-block :global(p) {
         margin: 0;
-        color: var(--text-dim);
-        text-align: center;
-        padding: 8px 0;
     }
 </style>
