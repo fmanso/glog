@@ -53,6 +53,18 @@
         /* Slightly lighter than app background */
         background: rgba(255, 255, 255, 0.04);
         box-shadow: none;
+        animation: panelFadeIn 0.3s ease;
+    }
+
+    @keyframes panelFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     .section-title {
@@ -76,8 +88,15 @@
         line-height: 1.25;
     }
 
-    .task-link { color: var(--accent); text-decoration: none; }
-    .task-link:hover { color: var(--accent-strong); text-decoration: underline; }
+    .task-link { 
+        color: var(--accent); 
+        text-decoration: none;
+        transition: color 0.15s ease;
+    }
+    .task-link:hover { 
+        color: var(--accent-strong); 
+        text-decoration: underline; 
+    }
 
     .task-desc {
         margin: 0;
@@ -87,6 +106,11 @@
         white-space: pre-line;
         padding-left: 0;
         border-left: none;
+        transition: color 0.15s ease;
+    }
+
+    .task-item:hover .task-desc {
+        color: var(--text);
     }
 
     .task-meta { padding-left: 0; margin-top: 6px; }
@@ -101,6 +125,12 @@
         font-size: 12px;
         font-weight: 600;
         letter-spacing: 0.01em;
+        transition: background 0.15s ease, transform 0.1s ease;
+    }
+
+    .pill:hover {
+        background: var(--accent);
+        color: #07111f;
     }
 
     .empty { margin: 4px 0 0 0; color: var(--text-dim); }

@@ -342,7 +342,7 @@
 </script>
 
 <main class={`block ${isEditing ? 'block-editing' : ''} document-block`} style={`--indent-level: ${block.indent}`}>
-    <div class="bullet">•</div>
+    <div class="bullet"></div>
     <div class="editor-pane" style="display: {isEditing ? 'block' : 'none'}; width: 100%; position: relative;">
         <div bind:this={editorContainer}></div>
         <div bind:this={pickerAnchor} style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;"></div>
@@ -362,7 +362,7 @@
                  }
              }}>
             {#if (block.content ?? '').length === 0}
-                <span class="empty-placeholder">&nbsp;</span>
+                <span class="empty-placeholder">Click to write...</span>
             {:else}
                 {@html markdownHtml}
             {/if}
@@ -392,12 +392,26 @@
     .bullet {
         width: 18px;
         min-width: 18px;
-        text-align: center;
+        height: 1.6em;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         user-select: none;
-        color: var(--text-dim);
-        font-size: 24px;
-        line-height: 1.6;
         flex: 0 0 auto;
+    }
+    
+    .bullet::before {
+        content: '';
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--text-dim);
+        opacity: 0.6;
+        transition: opacity 0.15s ease, background 0.15s ease;
+    }
+    
+    main:hover .bullet::before {
+        opacity: 0.9;
     }
 
     /* Content area - both editor and preview */
@@ -512,7 +526,9 @@
         width: 100%;
         min-height: 1.6em;
         color: var(--text-dim);
-        opacity: 0.5;
+        opacity: 0.4;
+        font-style: italic;
+        user-select: none;
     }
 
     /* Flatpickr z-index fix */

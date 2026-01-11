@@ -118,6 +118,18 @@
         border-radius: 10px;
         background: rgba(255, 255, 255, 0.04);
         box-shadow: none;
+        animation: panelFadeIn 0.3s ease;
+    }
+
+    @keyframes panelFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     .section-title {
@@ -146,6 +158,7 @@
     .reference-header a {
         color: var(--accent);
         text-decoration: none;
+        transition: color 0.15s ease;
     }
 
     .reference-header a:hover {
@@ -164,6 +177,11 @@
         font-size: 0.95rem;
         line-height: 1.4;
         padding: 2px 0;
+        transition: color 0.15s ease;
+    }
+
+    .reference-block:hover {
+        color: var(--text);
     }
 
     .reference-block :global(p) {

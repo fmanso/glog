@@ -1,6 +1,7 @@
 <script lang="ts">
     import {onMount} from 'svelte';
     import DocumentUIElement from './components/DocumentUIElement.svelte';
+    import Skeleton from './components/Skeleton.svelte';
     import {LoadJournalToday, OpenDocument, OpenDocumentByTitle, DeleteDocument} from '../wailsjs/go/main/App'
     import type { main } from '../wailsjs/go/models'
     import { push } from 'svelte-spa-router';
@@ -65,7 +66,7 @@
         <div>
             <h1>{document?.title ?? 'Loading…'}</h1>
         </div>
-        {#if document && !document.isJournal}
+        {#if document && !document.is_journal}
             <button 
                 class="delete-btn" 
                 on:click={() => showDeleteConfirm = true}
@@ -78,9 +79,11 @@
 
     <section class="card blocks-card">
         {#if document}
-            <DocumentUIElement document={document}></DocumentUIElement>
+            <div class="content-fade-in">
+                <DocumentUIElement document={document}></DocumentUIElement>
+            </div>
         {:else}
-            <div class="empty-state">Loading…</div>
+            <Skeleton lines={4} showTitle={false} />
         {/if}
     </section>
 </main>
@@ -122,18 +125,20 @@
 
     .delete-btn {
         background: transparent;
-        border: 1px solid var(--color-danger, #dc3545);
-        color: var(--color-danger, #dc3545);
-        padding: 0.5rem 1rem;
-        border-radius: 4px;
+        border: 1px solid var(--danger);
+        color: var(--danger);
+        padding: 10px 16px;
+        border-radius: 8px;
         cursor: pointer;
-        font-size: 0.875rem;
-        transition: all 0.2s ease;
+        font-size: 14px;
+        font-weight: 500;
+        transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
     }
 
     .delete-btn:hover {
-        background: var(--color-danger, #dc3545);
-        color: white;
+        background: var(--danger);
+        border-color: var(--danger);
+        color: #fff;
     }
 
     .modal-overlay {
@@ -142,73 +147,121 @@
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
         display: flex;
         align-items: center;
         justify-content: center;
         z-index: 1000;
+        animation: fadeIn 0.15s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+        from { 
+            opacity: 0;
+            transform: translateY(10px) scale(0.98);
+        }
+        to { 
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
     }
 
     .modal {
-        background: var(--color-surface, #1e1e1e);
-        padding: 1.5rem;
-        border-radius: 8px;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        padding: 24px;
+        border-radius: var(--radius);
         max-width: 400px;
         width: 90%;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        box-shadow: var(--shadow);
+        animation: slideUp 0.2s ease;
     }
 
     .modal h2 {
-        margin: 0 0 1rem 0;
-        color: var(--color-text, #fff);
+        margin: 0 0 12px 0;
+        color: var(--text);
+        font-size: 18px;
+        font-weight: 600;
     }
 
     .modal p {
-        margin: 0.5rem 0;
-        color: var(--color-text-secondary, #aaa);
+        margin: 8px 0;
+        color: var(--text-dim);
+        font-size: 15px;
+        line-height: 1.5;
     }
 
     .modal .warning {
-        color: var(--color-danger, #dc3545);
-        font-size: 0.875rem;
+        color: var(--danger);
+        font-size: 13px;
+        margin-top: 12px;
     }
 
     .modal-actions {
         display: flex;
-        gap: 0.75rem;
+        gap: 10px;
         justify-content: flex-end;
-        margin-top: 1.5rem;
+        margin-top: 20px;
     }
 
     .cancel-btn {
-        background: transparent;
-        border: 1px solid var(--color-border, #444);
-        color: var(--color-text, #fff);
-        padding: 0.5rem 1rem;
-        border-radius: 4px;
+        background: var(--surface-3);
+        border: 1px solid var(--border);
+        color: var(--text);
+        padding: 10px 16px;
+        border-radius: 8px;
         cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: background 0.15s ease, border-color 0.15s ease;
     }
 
     .cancel-btn:hover:not(:disabled) {
-        background: var(--color-border, #444);
+        background: var(--surface-1);
+        border-color: var(--border-strong);
     }
 
     .confirm-delete-btn {
-        background: var(--color-danger, #dc3545);
-        border: none;
-        color: white;
-        padding: 0.5rem 1rem;
-        border-radius: 4px;
+        background: var(--danger);
+        border: 1px solid var(--danger);
+        color: #fff;
+        padding: 10px 16px;
+        border-radius: 8px;
         cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: background 0.15s ease, filter 0.15s ease;
     }
 
     .confirm-delete-btn:hover:not(:disabled) {
-        background: #c82333;
+        filter: brightness(1.1);
     }
 
     .cancel-btn:disabled,
     .confirm-delete-btn:disabled {
-        opacity: 0.6;
+        opacity: 0.5;
         cursor: not-allowed;
+    }
+
+    .content-fade-in {
+        animation: contentFadeIn 0.25s ease;
+    }
+
+    @keyframes contentFadeIn {
+        from { 
+            opacity: 0;
+            transform: translateY(4px);
+        }
+        to { 
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 </style>

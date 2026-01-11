@@ -8,6 +8,10 @@
     let blockInstances: Record<string, BlockUIElement> = {};
     let currentEditingId: string | null = null;
     let containerEl: HTMLElement;
+    
+    // Save indicator state
+    let saveStatus: 'idle' | 'saving' | 'saved' = 'idle';
+    let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const setCurrentEditing = (id: string | null) => {
         currentEditingId = id;
@@ -201,11 +205,38 @@
 
     async function saveDocument() {
         console.log("Saving document...", document);
+        saveStatus = 'saving';
+        
+        // Clear any existing timeout
+        if (saveTimeout) {
+            clearTimeout(saveTimeout);
+        }
+        
         await SaveDocument(document);
+        
+        saveStatus = 'saved';
+        
+        // Hide the saved indicator after 2 seconds
+        saveTimeout = setTimeout(() => {
+            saveStatus = 'idle';
+        }, 2000);
     }
 </script>
 
 <main class="document-container" bind:this={containerEl}>
+    <!-- Save indicator -->
+    <div class="save-indicator" class:visible={saveStatus !== 'idle'}>
+        {#if saveStatus === 'saving'}
+            <span class="save-dot saving"></span>
+            <span>Saving</span>
+        {:else if saveStatus === 'saved'}
+            <svg class="save-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>Saved</span>
+        {/if}
+    </div>
+    
     {#each document.blocks as blk (blk.id)}
         <BlockUIElement block={blk}
                         bind:this={blockInstances[blk.id]}
@@ -229,5 +260,53 @@
 <style>
     :global(:root) { --indent-size-px: 18px; }
     /* Separación mínima entre bloques: que se sienta como líneas consecutivas */
-    .document-container { display: flex; flex-direction: column; gap: 0; }
+    .document-container { 
+        display: flex; 
+        flex-direction: column; 
+        gap: 0;
+        position: relative;
+    }
+    
+    /* Save indicator */
+    .save-indicator {
+        position: absolute;
+        top: -28px;
+        right: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--text-dim);
+        opacity: 0;
+        transform: translateY(4px);
+        transition: opacity 0.2s ease, transform 0.2s ease;
+        pointer-events: none;
+    }
+    
+    .save-indicator.visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    
+    .save-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+    }
+    
+    .save-dot.saving {
+        animation: pulse 1s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 0.4; }
+        50% { opacity: 1; }
+    }
+    
+    .save-check {
+        width: 14px;
+        height: 14px;
+        color: var(--accent);
+    }
 </style>

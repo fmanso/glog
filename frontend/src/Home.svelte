@@ -4,6 +4,7 @@
   import type {main} from "../wailsjs/go/models";
   import DocumentUIElement from "./components/DocumentUIElement.svelte";
   import ScheduledTasksUIElement from "./components/ScheduledTasksUIElement.svelte";
+  import Skeleton from "./components/Skeleton.svelte";
 
   let items: main.DocumentDto[] = [];
 let page = 0;
@@ -110,12 +111,14 @@ function isToday(document: main.DocumentDto): boolean {
 
       <section class="card blocks-card">
         {#if document}
-          <DocumentUIElement document={document}></DocumentUIElement>
-          {#if isToday(document)}
-            <ScheduledTasksUIElement></ScheduledTasksUIElement>
-          {/if}
+          <div class="content-fade-in">
+            <DocumentUIElement document={document}></DocumentUIElement>
+            {#if isToday(document)}
+              <ScheduledTasksUIElement></ScheduledTasksUIElement>
+            {/if}
+          </div>
         {:else}
-          <div class="empty-state">Loading…</div>
+          <Skeleton lines={3} showTitle={false} />
         {/if}
       </section>
 
@@ -125,7 +128,9 @@ function isToday(document: main.DocumentDto): boolean {
     {/each}
 
     {#if loading}
-      <div class="loader">Loading...</div>
+      <div class="loader">
+        <Skeleton lines={5} showTitle={true} />
+      </div>
     {/if}
 
     <div class="sentinel" bind:this={sentinel} aria-hidden="true"></div>
