@@ -243,12 +243,17 @@ label { color: var(--text-dim); font-size: 14px; }
 .document-view .block .cm-editor,
 .document-view .markdown-preview {
   background: transparent;
-  border-color: transparent;
+  border: none;
+  padding: 0;
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.6;
 }
 
 .document-view .block .cm-editor.cm-focused {
-  border-color: transparent;
+  border: none;
   box-shadow: none;
+  outline: none;
 }
 
 /* --- Flat document view: render everything directly on app background --- */
@@ -261,38 +266,27 @@ label { color: var(--text-dim); font-size: 14px; }
   box-shadow: none;
 }
 
-/* Blocks shouldn't look like individual cards in document view */
+/* Blocks in document view - clean, minimal styling */
 .document-view .block {
   background: transparent;
-  border-color: transparent;
+  border: none;
   box-shadow: none;
   border-radius: 0;
-  /* sin padding ni márgenes: que se sienta como texto continuo */
   padding: 0;
-  margin-top: 0;
-  margin-bottom: 0;
-  /* alinear bullet y texto correctamente */
+  margin-top: 2px;
+  margin-bottom: 2px;
   align-items: baseline;
-  gap: 4px;
+  gap: 6px;
 }
 
 .document-view .block .bullet {
-  /* asegurar que el bullet no quede por encima */
-  margin-top: 0;
-  line-height: 1;
+  line-height: 1.6;
 }
 
 .document-view .markdown-preview {
   padding: 0;
   border: none;
-  border-radius: 0;
   background: transparent;
-}
-
-/* Tighten vertical rhythm between blocks when flat */
-.document-view .block {
-  margin-top: 0;
-  margin-bottom: 0;
 }
 
 /* --- Home: separator line between documents --- */
@@ -319,49 +313,68 @@ label { color: var(--text-dim); font-size: 14px; }
 /* Block UI styling */
 .block {
   display: flex;
-  align-items: flex-start;
-  /* Menos espacio entre bullet y texto */
-  gap: 4px;
-  padding: 6px 8px;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  /* Fallback seguro cuando --indent-level no está definido */
+  align-items: baseline;
+  gap: 6px;
+  padding: 0;
+  border-radius: 0;
+  border: none;
   margin-left: calc(var(--indent-level, 0) * var(--indent-size-px));
-  margin-top: 4px;
-  margin-bottom: 4px;
-  transition: background 0.12s ease, border-color 0.12s ease;
+  margin-top: 2px;
+  margin-bottom: 2px;
+  background: transparent;
 }
 
-.block:hover { background: var(--surface-2); border-color: var(--border); }
-.block.block-editing { background: var(--surface-2); border-color: var(--border-strong); box-shadow: 0 0 0 1px rgba(255,255,255,0.02); }
+.document-view .block:hover { 
+  background: transparent; 
+  border: none;
+}
 
-/* Bullet más grande y con menos espacio horizontal */
+.document-view .block.block-editing { 
+  background: transparent; 
+  border: none;
+  box-shadow: none; 
+}
+
+/* Bullet styling */
 .block .bullet {
-  width: 14px;
+  width: 18px;
+  min-width: 18px;
   text-align: center;
   user-select: none;
   color: var(--text-dim);
-  font-variant-numeric: tabular-nums;
-  font-size: 22px;
-  line-height: 1;
-  margin-top: 1px;
+  font-size: 24px;
+  line-height: 1.6;
+  flex: 0 0 auto;
 }
 
-.block .editor-pane { flex: 1; }
+.block .editor-pane { flex: 1; min-width: 0; }
 
-/* CodeMirror host overrides */
+/* CodeMirror host overrides - minimal styling for document view */
 .block .cm-editor {
-  background: var(--surface-2);
+  background: transparent;
   color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 6px 8px;
+  border: none;
+  padding: 0;
   caret-color: var(--accent);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.6;
 }
 
-.block .cm-editor .cm-content { font-family: var(--mono); }
+.block .cm-editor .cm-content { 
+  font-family: var(--font);
+  padding: 0;
+}
 
-.block .cm-editor.cm-focused { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); }
+.block .cm-editor .cm-line {
+  padding: 0;
+}
+
+.block .cm-editor.cm-focused { 
+  border: none;
+  box-shadow: none;
+  outline: none;
+}
 
 .block .cm-scroller { scrollbar-width: thin; }
 .block .cm-gutters { display: none; }
@@ -374,43 +387,44 @@ label { color: var(--text-dim); font-size: 14px; }
 
 .markdown-preview {
   width: 100%;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  padding: 0;
   color: var(--text);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.6;
 }
 
-.markdown-preview a { color: var(--accent); }
-.markdown-preview a:hover { color: var(--accent-strong); }
+.markdown-preview a { color: var(--accent); text-decoration: none; }
+.markdown-preview a:hover { color: var(--accent-strong); text-decoration: underline; }
 
-.markdown-preview p { margin: 0 0 8px 0; }
+.markdown-preview p { margin: 0; }
 .markdown-preview p:last-child { margin-bottom: 0; }
 
 .markdown-preview pre,
 .markdown-preview code {
   font-family: var(--mono);
-  font-size: 0.95em;
-  background: var(--code-bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  font-size: 0.9em;
+  background: var(--surface-2);
+  border-radius: 4px;
   color: var(--text);
 }
 
-.markdown-preview pre { padding: 12px; overflow-x: auto; margin: 0 0 10px 0; }
-.markdown-preview code { padding: 2px 5px; }
-.markdown-preview pre > code { display: block; background: transparent; border: none; padding: 0; font: inherit; }
+.markdown-preview pre { padding: 8px 12px; overflow-x: auto; margin: 4px 0; border-radius: 6px; }
+.markdown-preview code { padding: 1px 4px; }
+.markdown-preview pre > code { display: block; background: transparent; padding: 0; font: inherit; }
 
 /* --- Document view: compact vertical spacing inside markdown preview --- */
-.document-view .markdown-preview p { margin: 0 0 2px 0; }
+.document-view .markdown-preview p { margin: 0; }
 .document-view .markdown-preview p:last-child { margin-bottom: 0; }
-.document-view .markdown-preview pre { margin: 0 0 4px 0; }
+.document-view .markdown-preview pre { margin: 4px 0; }
 .document-view .markdown-preview h1,
 .document-view .markdown-preview h2,
 .document-view .markdown-preview h3,
 .document-view .markdown-preview h4,
 .document-view .markdown-preview h5,
-.document-view .markdown-preview h6 { margin: 0 0 2px 0; }
+.document-view .markdown-preview h6 { margin: 0; }
 
 /* Utility */
 hr { border: none; border-top: 1px solid var(--border); }

@@ -209,10 +209,38 @@
         destroyPicker();
     }
 
-    const caretTheme = EditorView.theme({
+    const editorTheme = EditorView.theme({
+        // Caret and selection colors
         ".cm-content, .cm-content *": { caretColor: "var(--accent)" },
         ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--accent)" },
         ".cm-selectionBackground, .cm-content ::selection": { backgroundColor: "var(--accent-weak)" },
+        // Reset CodeMirror defaults to match our design
+        "&": {
+            backgroundColor: "transparent",
+            fontSize: "16px",
+            lineHeight: "1.6",
+        },
+        "&.cm-focused": {
+            outline: "none",
+        },
+        ".cm-scroller": {
+            fontFamily: "var(--font)",
+            lineHeight: "1.6",
+            overflow: "visible",
+        },
+        ".cm-content": {
+            padding: "0",
+            caretColor: "var(--accent)",
+        },
+        ".cm-line": {
+            padding: "0",
+        },
+        ".cm-activeLine": {
+            backgroundColor: "transparent",
+        },
+        ".cm-activeLineGutter": {
+            backgroundColor: "transparent",
+        },
     }, { dark: true });
 
     onMount(() => {
@@ -221,7 +249,7 @@
             parent: editorContainer,
             extensions: [
                 EditorView.lineWrapping,
-                caretTheme,
+                editorTheme,
                 history(),
                 autocompletion({override: [autocomplete]}),
                 keymap.of([
@@ -347,56 +375,154 @@
     :global(:root) {
         --indent-size-px: 18px;
     }
+
     main {
         display: flex;
-        /* baseline alinea mejor el bullet con la primera línea */
         align-items: baseline;
-        /* menos espacio entre bullet y texto */
-        gap: 4px;
+        gap: 6px;
         margin-left: calc(var(--indent-level) * var(--indent-size-px));
-        /* El espaciado vertical entre bloques lo controla el contenedor (gap) */
         margin-top: 0;
         margin-bottom: 0;
+        padding: 0;
+        border: none;
+        background: transparent;
     }
 
-    /* Bullet: hacerlo grande y alineado */
+    /* Bullet styling - consistent in both modes */
     .bullet {
-        width: 16px;
+        width: 18px;
+        min-width: 18px;
         text-align: center;
         user-select: none;
         color: var(--text-dim);
-        font-size: 28px;
-        line-height: 1;
+        font-size: 24px;
+        line-height: 1.6;
         flex: 0 0 auto;
-        /* Compensa la métrica del glifo para que no se vea “subido” */
-        transform: translateY(3px);
     }
 
-    main > div:last-child {
-        flex-grow: 1;
-    }
-
-    :global(.flatpickr-calendar) { z-index: 9999 !important; }
-
-    main.document-block {
-        /* layout estable: que el global .block no meta padding/margen */
+    /* Content area - both editor and preview */
+    .editor-pane,
+    .markdown-preview {
+        flex: 1;
+        min-width: 0;
+        font-family: var(--font);
+        font-size: 16px;
+        line-height: 1.6;
+        color: var(--text);
+        background: transparent;
+        border: none;
         padding: 0;
-        margin-top: 0;
-        margin-bottom: 0;
-        align-items: baseline;
+        margin: 0;
     }
-     main.document-block .bullet {
-         margin-top: 0;
-     }
 
-     .markdown-preview {
-         width: 100%;
-         min-height: 1.2em;
-     }
+    /* Ensure CodeMirror inherits our styles */
+    .editor-pane :global(.cm-editor) {
+        background: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+        font-family: var(--font) !important;
+        font-size: 16px !important;
+        line-height: 1.6 !important;
+    }
 
-     .empty-placeholder {
-         display: inline-block;
-         width: 100%;
-         min-height: 1.2em;
-     }
- </style>
+    .editor-pane :global(.cm-editor.cm-focused) {
+        outline: none !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+
+    .editor-pane :global(.cm-scroller) {
+        font-family: var(--font) !important;
+        line-height: 1.6 !important;
+        overflow: visible !important;
+    }
+
+    .editor-pane :global(.cm-content) {
+        padding: 0 !important;
+        font-family: var(--font) !important;
+    }
+
+    .editor-pane :global(.cm-line) {
+        padding: 0 !important;
+    }
+
+    .editor-pane :global(.cm-activeLine) {
+        background-color: transparent !important;
+    }
+
+    /* Markdown preview - matches editor exactly */
+    .markdown-preview {
+        width: 100%;
+        min-height: 1.6em;
+        cursor: text;
+    }
+
+    .markdown-preview:focus {
+        outline: none;
+    }
+
+    /* Reset markdown element styles for inline feel */
+    .markdown-preview :global(p) {
+        margin: 0;
+        padding: 0;
+    }
+
+    .markdown-preview :global(p:last-child) {
+        margin-bottom: 0;
+    }
+
+    /* Links in preview */
+    .markdown-preview :global(a) {
+        color: var(--accent);
+        text-decoration: none;
+    }
+
+    .markdown-preview :global(a:hover) {
+        color: var(--accent-strong);
+        text-decoration: underline;
+    }
+
+    /* Code styling */
+    .markdown-preview :global(code) {
+        font-family: var(--mono);
+        font-size: 0.9em;
+        background: var(--surface-2);
+        padding: 1px 4px;
+        border-radius: 4px;
+    }
+
+    .markdown-preview :global(pre) {
+        font-family: var(--mono);
+        font-size: 0.9em;
+        background: var(--surface-2);
+        padding: 8px 12px;
+        border-radius: 6px;
+        margin: 4px 0;
+        overflow-x: auto;
+    }
+
+    .markdown-preview :global(pre code) {
+        background: transparent;
+        padding: 0;
+    }
+
+    /* Empty state placeholder */
+    .empty-placeholder {
+        display: inline-block;
+        width: 100%;
+        min-height: 1.6em;
+        color: var(--text-dim);
+        opacity: 0.5;
+    }
+
+    /* Flatpickr z-index fix */
+    :global(.flatpickr-calendar) {
+        z-index: 9999 !important;
+    }
+
+    /* Block editing state - subtle highlight */
+    main.block-editing {
+        background: transparent;
+        border: none;
+    }
+</style>
