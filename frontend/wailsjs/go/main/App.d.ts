@@ -4,6 +4,8 @@ import {main} from '../models';
 
 export function GetDocumentList():Promise<Array<main.DocumentSummaryDto>>;
 
+export function GetIndexHealth():Promise<main.IndexHealthDto>;
+
 export function GetReferences(arg1:string):Promise<Array<main.DocumentReferenceDto>>;
 
 export function GetScheduledTasks():Promise<Array<main.ScheduledTaskDto>>;
@@ -15,6 +17,10 @@ export function LoadJournals(arg1:string,arg2:string):Promise<Array<main.Documen
 export function OpenDocument(arg1:string):Promise<main.DocumentDto>;
 
 export function OpenDocumentByTitle(arg1:string):Promise<main.DocumentDto>;
+
+export function ReindexSearch():Promise<void>;
+
+export function RetryFailedIndexing():Promise<number>;
 
 export function SaveDocument(arg1:main.DocumentDto):Promise<void>;
 

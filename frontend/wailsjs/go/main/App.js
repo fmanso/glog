@@ -6,6 +6,10 @@ export function GetDocumentList() {
   return window['go']['main']['App']['GetDocumentList']();
 }
 
+export function GetIndexHealth() {
+  return window['go']['main']['App']['GetIndexHealth']();
+}
+
 export function GetReferences(arg1) {
   return window['go']['main']['App']['GetReferences'](arg1);
 }
@@ -28,6 +32,14 @@ export function OpenDocument(arg1) {
 
 export function OpenDocumentByTitle(arg1) {
   return window['go']['main']['App']['OpenDocumentByTitle'](arg1);
+}
+
+export function ReindexSearch() {
+  return window['go']['main']['App']['ReindexSearch']();
+}
+
+export function RetryFailedIndexing() {
+  return window['go']['main']['App']['RetryFailedIndexing']();
 }
 
 export function SaveDocument(arg1) {

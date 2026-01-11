@@ -11,6 +11,7 @@
     import flatpickr from "flatpickr";
     import "flatpickr/dist/themes/dark.css";
     import type { Instance } from "flatpickr/dist/types/instance";
+    import {history, historyKeymap} from "@codemirror/commands";
 
     const dispatch = createEventDispatcher();
     export let block: main.BlockDto;
@@ -221,8 +222,10 @@
             extensions: [
                 EditorView.lineWrapping,
                 caretTheme,
+                history(),
                 autocompletion({override: [autocomplete]}),
                 keymap.of([
+                    ...historyKeymap,
                     ...completionKeymap,
                     {key: "Tab", run: () => { dispatch('tab', {id: block.id}); return true; } },
                     {key: "Shift-Tab", run: () => { dispatch('shiftTab', {id: block.id}); return true; } },

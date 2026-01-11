@@ -118,6 +118,26 @@ export namespace main {
 	        this.date = source["date"];
 	    }
 	}
+	export class IndexHealthDto {
+	    isHealthy: boolean;
+	    failedDocuments: number;
+	    lastHealthCheck: string;
+	    requiresReindex: boolean;
+	    healthCheckMessage: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new IndexHealthDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.isHealthy = source["isHealthy"];
+	        this.failedDocuments = source["failedDocuments"];
+	        this.lastHealthCheck = source["lastHealthCheck"];
+	        this.requiresReindex = source["requiresReindex"];
+	        this.healthCheckMessage = source["healthCheckMessage"];
+	    }
+	}
 	export class ScheduledTaskDto {
 	    id: string;
 	    description: string;
