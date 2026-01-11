@@ -157,9 +157,10 @@ func TestLoadDocumentByTime(t *testing.T) {
 	}()
 
 	doc1 := &domain.Document{
-		ID:    domain.DocumentID(uuid.New()),
-		Title: "Test Document 1",
-		Date:  time.Date(2024, 1, 1, 6, 0, 0, 0, time.UTC),
+		ID:        domain.DocumentID(uuid.New()),
+		Title:     "Test Document 1",
+		Date:      time.Date(2024, 1, 1, 6, 0, 0, 0, time.UTC),
+		IsJournal: true,
 		Blocks: []*domain.Block{
 			{
 				ID:      domain.BlockID(uuid.New()),
@@ -175,9 +176,10 @@ func TestLoadDocumentByTime(t *testing.T) {
 	}
 
 	doc2 := &domain.Document{
-		ID:    domain.DocumentID(uuid.New()),
-		Title: "Test Document 2",
-		Date:  time.Date(2024, 1, 2, 6, 0, 0, 0, time.UTC),
+		ID:        domain.DocumentID(uuid.New()),
+		Title:     "Test Document 2",
+		Date:      time.Date(2024, 1, 2, 6, 0, 0, 0, time.UTC),
+		IsJournal: true,
 		Blocks: []*domain.Block{
 			{
 				ID:      domain.BlockID(uuid.New()),
@@ -802,5 +804,331 @@ func TestConcurrentSaveAndSearch(t *testing.T) {
 	expectedDocs := numSavers * docsPerSaver
 	if len(results) != expectedDocs {
 		t.Errorf("Expected %d documents, got %v", expectedDocs, len(results))
+	}
+}
+
+// TestJournalIndex tests that journals are properly indexed and retrieved
+func TestJournalIndex(t *testing.T) {
+	store, err := NewDocumentStore("./testjournalindex.db")
+	if err != nil {
+		t.Fatalf("Failed to create DocumentStore: %v", err)
+	}
+	defer func() {
+		err := store.Close()
+		if err != nil {
+			t.Errorf("Failed to close DocumentStore: %v", err)
+		}
+
+		_ = os.Remove("./testjournalindex.db")
+		_ = os.RemoveAll("./testjournalindex.db.bleve")
+	}()
+
+	// Create a journal document
+	journal := &domain.Document{
+		ID:        domain.DocumentID(uuid.New()),
+		Title:     "Monday, January 1, 2024",
+		Date:      time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		IsJournal: true,
+		Blocks: []*domain.Block{
+			{
+				ID:      domain.BlockID(uuid.New()),
+				Content: "Journal entry for Monday",
+				Indent:  0,
+			},
+		},
+	}
+
+	err = store.Save(journal)
+	if err != nil {
+		t.Fatalf("Failed to save journal: %v", err)
+	}
+
+	// Create a regular document (not a journal)
+	regularDoc := &domain.Document{
+		ID:        domain.DocumentID(uuid.New()),
+		Title:     "Regular Document",
+		Date:      time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC),
+		IsJournal: false,
+		Blocks: []*domain.Block{
+			{
+				ID:      domain.BlockID(uuid.New()),
+				Content: "This is not a journal",
+				Indent:  0,
+			},
+		},
+	}
+
+	err = store.Save(regularDoc)
+	if err != nil {
+		t.Fatalf("Failed to save regular document: %v", err)
+	}
+
+	// Load journals for that date range - should only return the journal
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	journals, err := store.LoadJournals(from, to)
+	if err != nil {
+		t.Fatalf("Failed to load journals: %v", err)
+	}
+
+	if len(journals) != 1 {
+		t.Errorf("Expected 1 journal, got %v", len(journals))
+	}
+
+	if len(journals) > 0 && journals[0].ID != journal.ID {
+		t.Errorf("Expected journal ID %v, got %v", journal.ID, journals[0].ID)
+	}
+
+	if len(journals) > 0 && !journals[0].IsJournal {
+		t.Error("Expected loaded document to have IsJournal=true")
+	}
+}
+
+// TestJournalIndexMultipleDays tests journal retrieval across multiple days
+func TestJournalIndexMultipleDays(t *testing.T) {
+	store, err := NewDocumentStore("./testjournalmultipledays.db")
+	if err != nil {
+		t.Fatalf("Failed to create DocumentStore: %v", err)
+	}
+	defer func() {
+		err := store.Close()
+		if err != nil {
+			t.Errorf("Failed to close DocumentStore: %v", err)
+		}
+
+		_ = os.Remove("./testjournalmultipledays.db")
+		_ = os.RemoveAll("./testjournalmultipledays.db.bleve")
+	}()
+
+	// Create journals for 5 consecutive days
+	journalIDs := make([]domain.DocumentID, 5)
+	for i := 0; i < 5; i++ {
+		journal := &domain.Document{
+			ID:        domain.DocumentID(uuid.New()),
+			Title:     time.Date(2024, 1, i+1, 0, 0, 0, 0, time.UTC).Format("Monday, January 2, 2006"),
+			Date:      time.Date(2024, 1, i+1, 0, 0, 0, 0, time.UTC),
+			IsJournal: true,
+			Blocks: []*domain.Block{
+				{
+					ID:      domain.BlockID(uuid.New()),
+					Content: "Journal entry",
+					Indent:  0,
+				},
+			},
+		}
+		journalIDs[i] = journal.ID
+
+		err = store.Save(journal)
+		if err != nil {
+			t.Fatalf("Failed to save journal %d: %v", i, err)
+		}
+	}
+
+	// Load all 5 journals
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 1, 5, 0, 0, 0, 0, time.UTC)
+
+	journals, err := store.LoadJournals(from, to)
+	if err != nil {
+		t.Fatalf("Failed to load journals: %v", err)
+	}
+
+	if len(journals) != 5 {
+		t.Errorf("Expected 5 journals, got %v", len(journals))
+	}
+
+	// Load subset (days 2-4)
+	from = time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC)
+	to = time.Date(2024, 1, 4, 0, 0, 0, 0, time.UTC)
+
+	journals, err = store.LoadJournals(from, to)
+	if err != nil {
+		t.Fatalf("Failed to load journals: %v", err)
+	}
+
+	if len(journals) != 3 {
+		t.Errorf("Expected 3 journals for subset, got %v", len(journals))
+	}
+}
+
+// TestJournalNotIndexedWhenIsJournalFalse ensures non-journals are not in the journal index
+func TestJournalNotIndexedWhenIsJournalFalse(t *testing.T) {
+	store, err := NewDocumentStore("./testjournalnotindexed.db")
+	if err != nil {
+		t.Fatalf("Failed to create DocumentStore: %v", err)
+	}
+	defer func() {
+		err := store.Close()
+		if err != nil {
+			t.Errorf("Failed to close DocumentStore: %v", err)
+		}
+
+		_ = os.Remove("./testjournalnotindexed.db")
+		_ = os.RemoveAll("./testjournalnotindexed.db.bleve")
+	}()
+
+	// Create multiple regular documents
+	for i := 0; i < 3; i++ {
+		doc := &domain.Document{
+			ID:        domain.DocumentID(uuid.New()),
+			Title:     "Regular Document " + uuid.NewString(),
+			Date:      time.Date(2024, 1, i+1, 12, 30, 0, 0, time.UTC),
+			IsJournal: false,
+			Blocks: []*domain.Block{
+				{
+					ID:      domain.BlockID(uuid.New()),
+					Content: "Not a journal",
+					Indent:  0,
+				},
+			},
+		}
+
+		err = store.Save(doc)
+		if err != nil {
+			t.Fatalf("Failed to save document %d: %v", i, err)
+		}
+	}
+
+	// Load journals - should be empty
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 1, 3, 0, 0, 0, 0, time.UTC)
+
+	journals, err := store.LoadJournals(from, to)
+	if err != nil {
+		t.Fatalf("Failed to load journals: %v", err)
+	}
+
+	if len(journals) != 0 {
+		t.Errorf("Expected 0 journals (non-journals should not be indexed), got %v", len(journals))
+	}
+}
+
+// TestJournalIsJournalFieldPersistence ensures IsJournal field is properly saved and loaded
+func TestJournalIsJournalFieldPersistence(t *testing.T) {
+	store, err := NewDocumentStore("./testjournalpersistence.db")
+	if err != nil {
+		t.Fatalf("Failed to create DocumentStore: %v", err)
+	}
+	defer func() {
+		err := store.Close()
+		if err != nil {
+			t.Errorf("Failed to close DocumentStore: %v", err)
+		}
+
+		_ = os.Remove("./testjournalpersistence.db")
+		_ = os.RemoveAll("./testjournalpersistence.db.bleve")
+	}()
+
+	// Create and save a journal
+	journalID := domain.DocumentID(uuid.New())
+	journal := &domain.Document{
+		ID:        journalID,
+		Title:     "Persisted Journal",
+		Date:      time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+		IsJournal: true,
+		Blocks: []*domain.Block{
+			{
+				ID:      domain.BlockID(uuid.New()),
+				Content: "Content",
+				Indent:  0,
+			},
+		},
+	}
+
+	err = store.Save(journal)
+	if err != nil {
+		t.Fatalf("Failed to save journal: %v", err)
+	}
+
+	// Load by ID and verify IsJournal is true
+	loadedDoc, err := store.LoadDocument(journalID)
+	if err != nil {
+		t.Fatalf("Failed to load document: %v", err)
+	}
+
+	if !loadedDoc.IsJournal {
+		t.Error("Expected loaded document to have IsJournal=true, got false")
+	}
+
+	// Create and save a non-journal
+	regularID := domain.DocumentID(uuid.New())
+	regularDoc := &domain.Document{
+		ID:        regularID,
+		Title:     "Regular Document",
+		Date:      time.Date(2024, 1, 15, 14, 30, 0, 0, time.UTC),
+		IsJournal: false,
+		Blocks: []*domain.Block{
+			{
+				ID:      domain.BlockID(uuid.New()),
+				Content: "Content",
+				Indent:  0,
+			},
+		},
+	}
+
+	err = store.Save(regularDoc)
+	if err != nil {
+		t.Fatalf("Failed to save regular document: %v", err)
+	}
+
+	// Load by ID and verify IsJournal is false
+	loadedRegular, err := store.LoadDocument(regularID)
+	if err != nil {
+		t.Fatalf("Failed to load regular document: %v", err)
+	}
+
+	if loadedRegular.IsJournal {
+		t.Error("Expected loaded document to have IsJournal=false, got true")
+	}
+}
+
+// TestJournalSameDayDifferentTimes tests that journals are indexed by date, not exact time
+func TestJournalSameDayDifferentTimes(t *testing.T) {
+	store, err := NewDocumentStore("./testjournalsamedaytimes.db")
+	if err != nil {
+		t.Fatalf("Failed to create DocumentStore: %v", err)
+	}
+	defer func() {
+		err := store.Close()
+		if err != nil {
+			t.Errorf("Failed to close DocumentStore: %v", err)
+		}
+
+		_ = os.Remove("./testjournalsamedaytimes.db")
+		_ = os.RemoveAll("./testjournalsamedaytimes.db.bleve")
+	}()
+
+	// Create a journal with a specific time (e.g., noon)
+	journal := &domain.Document{
+		ID:        domain.DocumentID(uuid.New()),
+		Title:     "Journal at noon",
+		Date:      time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC),
+		IsJournal: true,
+		Blocks: []*domain.Block{
+			{
+				ID:      domain.BlockID(uuid.New()),
+				Content: "Created at noon",
+				Indent:  0,
+			},
+		},
+	}
+
+	err = store.Save(journal)
+	if err != nil {
+		t.Fatalf("Failed to save journal: %v", err)
+	}
+
+	// Should be retrievable by querying the day regardless of time
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	journals, err := store.LoadJournals(from, to)
+	if err != nil {
+		t.Fatalf("Failed to load journals: %v", err)
+	}
+
+	if len(journals) != 1 {
+		t.Errorf("Expected 1 journal, got %v", len(journals))
 	}
 }

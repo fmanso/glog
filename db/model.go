@@ -3,10 +3,11 @@ package db
 import "github.com/google/uuid"
 
 type DocDb struct {
-	ID     uuid.UUID
-	Title  string
-	Date   string
-	Blocks []*BlockDb
+	ID        uuid.UUID
+	Title     string
+	Date      string
+	IsJournal bool
+	Blocks    []*BlockDb
 }
 
 type BlockDb struct {

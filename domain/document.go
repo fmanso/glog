@@ -19,10 +19,11 @@ func (b BlockID) String() string {
 }
 
 type Document struct {
-	ID     DocumentID
-	Title  string
-	Date   time.Time // RFC 3339 format
-	Blocks []*Block
+	ID        DocumentID
+	Title     string
+	Date      time.Time // RFC 3339 format
+	IsJournal bool
+	Blocks    []*Block
 }
 
 type Block struct {

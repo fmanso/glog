@@ -48,15 +48,16 @@ type IndexHealth struct {
 // This ensures that ReindexSearch cannot run concurrently with any
 // other search index operations, preventing race conditions.
 type DocumentStore struct {
-	path             string
-	bolt             *bolt.DB
-	bucketDocs       []byte
-	bucketTimeIndex  []byte
-	bucketTitleIndex []byte
-	search           *bleveSearch
-	searchMu         sync.RWMutex // protects search index operations
-	referencesIndex  *referencesIndex
-	scheduledIndex   *scheduledTasks
+	path               string
+	bolt               *bolt.DB
+	bucketDocs         []byte
+	bucketTimeIndex    []byte
+	bucketTitleIndex   []byte
+	bucketJournalIndex []byte
+	search             *bleveSearch
+	searchMu           sync.RWMutex // protects search index operations
+	referencesIndex    *referencesIndex
+	scheduledIndex     *scheduledTasks
 
 	// Index health tracking
 	failedIndexes   map[string]*failedIndexEntry
@@ -74,6 +75,7 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 	docsKey := []byte("documents")
 	timeIndexKey := []byte("time_index")
 	titleIndexKey := []byte("title_index")
+	journalIndexKey := []byte("journal_index")
 
 	err = db.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists(docsKey)
@@ -87,6 +89,11 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 		}
 
 		_, err = tx.CreateBucketIfNotExists(titleIndexKey)
+		if err != nil {
+			return err
+		}
+
+		_, err = tx.CreateBucketIfNotExists(journalIndexKey)
 		if err != nil {
 			return err
 		}
@@ -120,15 +127,16 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 	}
 
 	store := &DocumentStore{
-		bolt:             db,
-		path:             path,
-		bucketDocs:       docsKey,
-		bucketTimeIndex:  timeIndexKey,
-		bucketTitleIndex: titleIndexKey,
-		search:           search,
-		referencesIndex:  referencesIndex,
-		scheduledIndex:   scheduledIndex,
-		failedIndexes:    make(map[string]*failedIndexEntry),
+		bolt:               db,
+		path:               path,
+		bucketDocs:         docsKey,
+		bucketTimeIndex:    timeIndexKey,
+		bucketTitleIndex:   titleIndexKey,
+		bucketJournalIndex: journalIndexKey,
+		search:             search,
+		referencesIndex:    referencesIndex,
+		scheduledIndex:     scheduledIndex,
+		failedIndexes:      make(map[string]*failedIndexEntry),
 		indexHealth: IndexHealth{
 			IsHealthy:       true,
 			LastHealthCheck: time.Now(),
@@ -263,10 +271,11 @@ func (store *DocumentStore) saveDoc(tx *bolt.Tx, doc *domain.Document) (*DocDb, 
 
 	// Create DocDb from domain.Document
 	docDb := DocDb{
-		ID:     uuid.UUID(doc.ID),
-		Title:  doc.Title,
-		Date:   doc.Date.UTC().Format(time.RFC3339),
-		Blocks: make([]*BlockDb, len(doc.Blocks)),
+		ID:        uuid.UUID(doc.ID),
+		Title:     doc.Title,
+		Date:      doc.Date.UTC().Format(time.RFC3339),
+		IsJournal: doc.IsJournal,
+		Blocks:    make([]*BlockDb, len(doc.Blocks)),
 	}
 
 	for i, block := range doc.Blocks {
@@ -315,6 +324,18 @@ func (store *DocumentStore) saveTitleIndex(tx *bolt.Tx, doc *domain.Document) er
 	return nil
 }
 
+func (store *DocumentStore) saveJournalIndex(tx *bolt.Tx, doc *domain.Document) error {
+	bucket := tx.Bucket(store.bucketJournalIndex)
+	if doc.IsJournal {
+		// Index by date (normalized to start of day in UTC) -> document ID
+		// This allows efficient lookup of journals by date
+		dateKey := time.Date(doc.Date.Year(), doc.Date.Month(), doc.Date.Day(), 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
+		log.Printf("Saving journal index: date=%s, id=%s\n", dateKey, doc.ID.String())
+		return bucket.Put([]byte(dateKey), []byte(doc.ID.String()))
+	}
+	return nil
+}
+
 func (store *DocumentStore) Save(doc *domain.Document) error {
 	var savedDoc *DocDb
 	if err := store.bolt.Update(func(tx *bolt.Tx) error {
@@ -330,6 +351,11 @@ func (store *DocumentStore) Save(doc *domain.Document) error {
 		}
 
 		err = store.saveTitleIndex(tx, doc)
+		if err != nil {
+			return err
+		}
+
+		err = store.saveJournalIndex(tx, doc)
 		if err != nil {
 			return err
 		}
@@ -389,6 +415,7 @@ func (store *DocumentStore) loadDocument(tx *bolt.Tx, id domain.DocumentID) (*do
 	doc.ID = domain.DocumentID(docDb.ID)
 	doc.Title = docDb.Title
 	doc.Date, _ = time.Parse(time.RFC3339, docDb.Date)
+	doc.IsJournal = docDb.IsJournal
 	doc.Blocks = make([]*domain.Block, len(docDb.Blocks))
 
 	for i, blockDb := range docDb.Blocks {
@@ -461,42 +488,34 @@ func (store *DocumentStore) ListDocuments() ([]DocumentSummary, error) {
 func (store *DocumentStore) LoadJournals(from time.Time, to time.Time) ([]*domain.Document, error) {
 	var docs []*domain.Document
 	err := store.bolt.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket(store.bucketTimeIndex)
+		bucket := tx.Bucket(store.bucketJournalIndex)
 		cursor := bucket.Cursor()
 
-		// Normalize to start of day in the given timezone
-		startDay := time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, from.Location())
-		endDay := time.Date(to.Year(), to.Month(), to.Day(), 0, 0, 0, 0, to.Location())
+		// Normalize to start of day in UTC for consistent key lookup
+		startDay := time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, time.UTC)
+		endDay := time.Date(to.Year(), to.Month(), to.Day(), 0, 0, 0, 0, time.UTC)
 
-		// Iterate through each day in the range
-		for currentDay := startDay; currentDay.Before(endDay) || currentDay.Equal(endDay); currentDay = currentDay.Add(24 * time.Hour) {
-			// Define the range for this day: from midnight to end of day
-			dayStart := currentDay.UTC()
-			dayEnd := currentDay.Add(24 * time.Hour).UTC()
+		// Iterate through the journal index in the date range
+		minKey := []byte(startDay.Format(time.RFC3339))
+		maxKey := []byte(endDay.Add(24 * time.Hour).Format(time.RFC3339))
 
-			// Seek to the start of the day range
-			minKey := []byte(dayStart.Format(time.RFC3339))
-			maxKey := []byte(dayEnd.Format(time.RFC3339))
+		for k, v := cursor.Seek(minKey); k != nil && bytes.Compare(k, maxKey) < 0; k, v = cursor.Next() {
+			id, err := uuid.Parse(string(v))
+			if err != nil {
+				return err
+			}
 
-			// Iterate through all entries in this day's range
-			for k, v := cursor.Seek(minKey); k != nil && bytes.Compare(k, maxKey) < 0; k, v = cursor.Next() {
-				id, err := uuid.Parse(string(v))
-				if err != nil {
+			d, err := store.loadDocument(tx, domain.DocumentID(id))
+			if err != nil {
+				if errors.Is(err, ErrDocumentNotFound) {
+					// Ignore missing document
+					continue
+				} else {
 					return err
 				}
-
-				d, err := store.loadDocument(tx, domain.DocumentID(id))
-				if err != nil {
-					if errors.Is(err, ErrDocumentNotFound) {
-						// Ignore missing document
-						continue
-					} else {
-						return err
-					}
-				}
-
-				docs = append(docs, d)
 			}
+
+			docs = append(docs, d)
 		}
 
 		return nil

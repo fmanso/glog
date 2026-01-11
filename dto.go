@@ -16,10 +16,11 @@ type BlockDto struct {
 }
 
 type DocumentDto struct {
-	Id     string     `json:"id"`
-	Title  string     `json:"title"`
-	Blocks []BlockDto `json:"blocks"`
-	Date   string     `json:"date"` // RFC 3339 format
+	Id        string     `json:"id"`
+	Title     string     `json:"title"`
+	Blocks    []BlockDto `json:"blocks"`
+	Date      string     `json:"date"`       // RFC 3339 format
+	IsJournal bool       `json:"is_journal"` // Indicates if this document is a journal entry
 }
 
 func ToDocumentDto(doc *domain.Document) DocumentDto {
@@ -33,10 +34,11 @@ func ToDocumentDto(doc *domain.Document) DocumentDto {
 	}
 
 	return DocumentDto{
-		Id:     doc.ID.String(),
-		Title:  doc.Title,
-		Date:   doc.Date.Format(time.RFC3339),
-		Blocks: blocks,
+		Id:        doc.ID.String(),
+		Title:     doc.Title,
+		Date:      doc.Date.Format(time.RFC3339),
+		IsJournal: doc.IsJournal,
+		Blocks:    blocks,
 	}
 }
 
@@ -52,10 +54,11 @@ func (d DocumentDto) ToDomain() (*domain.Document, error) {
 	}
 
 	doc := &domain.Document{
-		ID:     domain.DocumentID(docID),
-		Title:  d.Title,
-		Date:   t,
-		Blocks: make([]*domain.Block, len(d.Blocks)),
+		ID:        domain.DocumentID(docID),
+		Title:     d.Title,
+		Date:      t,
+		IsJournal: d.IsJournal,
+		Blocks:    make([]*domain.Block, len(d.Blocks)),
 	}
 
 	for i, b := range d.Blocks {

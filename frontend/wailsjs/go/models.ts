@@ -37,6 +37,7 @@ export namespace main {
 	    title: string;
 	    blocks: BlockDto[];
 	    date: string;
+	    is_journal: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new DocumentDto(source);
@@ -48,6 +49,7 @@ export namespace main {
 	        this.title = source["title"];
 	        this.blocks = this.convertValues(source["blocks"], BlockDto);
 	        this.date = source["date"];
+	        this.is_journal = source["is_journal"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

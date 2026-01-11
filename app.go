@@ -60,9 +60,10 @@ func (a *App) LoadJournalToday() (DocumentDto, error) {
 	// Create title based on date (e.g., "Monday, January 2, 2006")
 	title := t.Format("Monday, January 2, 2006")
 	return DocumentDto{
-		Id:    uuid.NewString(),
-		Title: title,
-		Date:  t.Format(time.RFC3339),
+		Id:        uuid.NewString(),
+		Title:     title,
+		Date:      t.Format(time.RFC3339),
+		IsJournal: true,
 		Blocks: []BlockDto{
 			{
 				Id:      uuid.NewString(),
