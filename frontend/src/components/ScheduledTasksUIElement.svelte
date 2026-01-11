@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { main } from '../../wailsjs/go/models';
+    import type { main } from '../../wailsjs/go/models';
     import { GetScheduledTasks } from '../../wailsjs/go/main/App';
     import { onMount } from 'svelte';
     let tasks: main.ScheduledTaskDto[] = [];

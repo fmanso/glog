@@ -1,20 +1,85 @@
 <script lang="ts">
+    import { onMount } from 'svelte';
     import { GetReferences } from '../../wailsjs/go/main/App';
-    import { main } from '../../wailsjs/go/models'
+    import type { main } from '../../wailsjs/go/models'
     import DOMPurify from "dompurify";
     import {marked} from "marked";
     import { replaceLinks } from './replaceLinks';
     export let title: string = '';
     let references: main.DocumentReferenceDto[] = [];
-    // Each time title changes, ask for references again
-    $: if (title) {
+
+    let lastTitle = '';
+    let requestId = 0;
+    let mounted = false;
+
+    onMount(() => {
+        mounted = true;
+        // Trigger load if title was already set before mount.
+        if (title && title !== lastTitle) {
+            lastTitle = title;
+            loadReferences(title);
+        }
+    });
+
+    // Cache results across component instances (Home renders DocumentUIElement in a list).
+    const globalKey = '__glog_references_cache__';
+    const globalStore = (globalThis as any)[globalKey] ?? ((globalThis as any)[globalKey] = {
+        cache: new Map<string, main.DocumentReferenceDto[]>(),
+        inflight: new Map<string, Promise<main.DocumentReferenceDto[]>>()
+    });
+
+    const cache: Map<string, main.DocumentReferenceDto[]> = globalStore.cache;
+    const inflight: Map<string, Promise<main.DocumentReferenceDto[]>> = globalStore.inflight;
+
+    // Each time title changes, ask for references again (deduped)
+    $: if (mounted && title && title !== lastTitle) {
+        lastTitle = title;
         loadReferences(title);
     }
 
-    async function loadReferences(title: string) {
-        console.log(`Loading references for ${title}`);
-        references = await GetReferences(title);
-        console.log(`Found: ${references}`);
+    async function loadReferences(nextTitle: string) {
+        const thisRequest = ++requestId;
+
+        const cached = cache.get(nextTitle);
+        if (cached !== undefined) {
+            references = cached;
+            return;
+        }
+
+        // Check for in-flight request
+        let promise = inflight.get(nextTitle);
+        if (!promise) {
+            // Atomically create and store the promise before any await
+            promise = (async () => {
+                try {
+                    const result = await GetReferences(nextTitle);
+                    return result ?? [];
+                } catch (err) {
+                    console.error(`[ReferencesUIElement] Backend error for: ${nextTitle}`, err);
+                    return [];
+                }
+            })();
+            inflight.set(nextTitle, promise);
+        }
+
+        try {
+            const result = await promise;
+            cache.set(nextTitle, result);
+            inflight.delete(nextTitle);
+
+            // Ignore stale responses if title changed mid-flight.
+            if (thisRequest !== requestId) {
+                return;
+            }
+            references = result;
+        } catch (err) {
+            console.error(`[ReferencesUIElement] Unexpected error loading references for: ${nextTitle}`, err);
+            inflight.delete(nextTitle);
+            cache.set(nextTitle, []);
+            if (thisRequest === requestId) {
+                references = [];
+            }
+        }
     }
 
     const renderBlock = (content: string) =>

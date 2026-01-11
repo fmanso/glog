@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { GetDocumentList, SearchDocuments } from '../wailsjs/go/main/App'
-    import { main } from '../wailsjs/go/models'
+    import type { main } from '../wailsjs/go/models'
 
     let documents : main.DocumentSummaryDto[] = [];
 

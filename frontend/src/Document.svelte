@@ -1,8 +1,8 @@
 <script lang="ts">
-    import {onMount, tick} from 'svelte';
+    import {onMount} from 'svelte';
     import DocumentUIElement from './components/DocumentUIElement.svelte';
     import {LoadJournalToday, OpenDocument, OpenDocumentByTitle} from '../wailsjs/go/main/App'
-    import { main } from '../wailsjs/go/models'
+    import type { main } from '../wailsjs/go/models'
     let document : main.DocumentDto;
 
     export let params: { id?: string, title?: string } = {};
@@ -21,13 +21,21 @@
         document = await LoadJournalToday();
     }
 
+    let paramsKey = '';
+
     onMount(async () => {
+        // Remember initial params so reactive block won't double-load.
+        paramsKey = `${params?.id ?? ''}|${params?.title ?? ''}`;
         await loadDocument();
     });
 
-    // React to params changes (when navigating between documents)
-    $: if (params) {
-        loadDocument();
+    // React to actual route param changes (avoid double-load on mount)
+    $: {
+        const nextKey = `${params?.id ?? ''}|${params?.title ?? ''}`;
+        if (nextKey !== paramsKey) {
+            paramsKey = nextKey;
+            loadDocument();
+        }
     }
 </script>
 

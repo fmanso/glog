@@ -5,7 +5,7 @@ import (
 	"errors"
 	"glog/db"
 	"glog/domain"
-	"log"
+
 	"strings"
 	"time"
 
@@ -207,8 +207,6 @@ func (a *App) GetReferences(title string) ([]DocumentReferenceDto, error) {
 		return nil, err
 	}
 
-	log.Println("Found references for title", title, ":", docIDs)
-
 	var references []DocumentReferenceDto
 	for _, id := range docIDs {
 		domainDoc, err := a.db.LoadDocument(id)
@@ -235,7 +233,6 @@ func (a *App) GetReferences(title string) ([]DocumentReferenceDto, error) {
 		})
 	}
 
-	log.Println("Found references for title", title, ":", references)
 	return references, nil
 }
 

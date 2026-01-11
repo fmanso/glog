@@ -127,6 +127,11 @@
 
     async function backspaceHandler(event: CustomEvent) {
         console.log('backspaceHandler', event);
+        // If there is any selected content, do not handle
+        if (event.detail.hasSelection) {
+            return;
+        }
+
         let id = event.detail.id;
 
         let index = document.blocks.findIndex(b => b.id === id);
@@ -217,7 +222,7 @@
     {/each}
 
     {#if document }
-        <ReferencesUIElement bind:title={document.title}></ReferencesUIElement>
+        <ReferencesUIElement title={document.title}></ReferencesUIElement>
     {/if}
 </main>
 

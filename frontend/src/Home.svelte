@@ -1,7 +1,7 @@
 <script lang="ts">
   import {onMount, tick} from 'svelte';
   import {LoadJournals, LoadJournalToday} from "../wailsjs/go/main/App";
-  import {main} from "../wailsjs/go/models";
+  import type {main} from "../wailsjs/go/models";
   import DocumentUIElement from "./components/DocumentUIElement.svelte";
   import ScheduledTasksUIElement from "./components/ScheduledTasksUIElement.svelte";
 
@@ -37,7 +37,9 @@ const loadMore = async () => {
     if (nextItems.length === 0) {
       hasMore = false;
     } else {
-      items = [...items, ...nextItems];
+      const existingIds = new Set(items.map((d) => d.id));
+      const dedupedNext = nextItems.filter((d) => !existingIds.has(d.id));
+      items = [...items, ...dedupedNext];
       page += 1;
     }
   } finally {
@@ -47,13 +49,18 @@ const loadMore = async () => {
   console.log(items);
 };
 
-onMount(() => {
+  let todayDocument: main.DocumentDto | null = null;
+
+  onMount(() => {
   let cancelled = false;
 
   const setup = async () => {
-    items = [await LoadJournalToday()]; // Load today's journal first
+    // Load today's journal once per mount; keep stable id.
+    todayDocument = await LoadJournalToday();
+    items = [todayDocument];
 
     await loadMore();
+
 
     observer = new IntersectionObserver(
       (entries) => {
