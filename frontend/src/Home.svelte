@@ -6,13 +6,15 @@
   import ScheduledTasksUIElement from "./components/ScheduledTasksUIElement.svelte";
   import Skeleton from "./components/Skeleton.svelte";
 
-  let items: main.DocumentDto[] = [];
+let items: main.DocumentDto[] = [];
 let page = 0;
 let hasMore = true;
 let loading = false;
 let sentinel: HTMLDivElement | null = null;
 let observer: IntersectionObserver | null = null;
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 30; // Days per page
+const MAX_EMPTY_PAGES = 24; // Stop after ~2 years of empty pages (24 * 30 = 720 days)
+let consecutiveEmptyPages = 0;
 
 const fakeFetch = async (pageNum: number): Promise<main.DocumentDto[]> => {
     // Start is the date of today - pageNum * PAGE_SIZE days
@@ -36,8 +38,19 @@ const loadMore = async () => {
     const nextItems = await fakeFetch(page);
     console.log(`Loaded ${nextItems.length} items for page ${page}`);
     if (nextItems.length === 0) {
-      hasMore = false;
+      consecutiveEmptyPages++;
+      // Stop if we've had too many consecutive empty pages
+      if (consecutiveEmptyPages >= MAX_EMPTY_PAGES) {
+        hasMore = false;
+      } else {
+        // Keep searching for older journals
+        page += 1;
+        // Continue searching in the same call
+        loading = false;
+        return loadMore();
+      }
     } else {
+      consecutiveEmptyPages = 0; // Reset counter when we find journals
       const existingIds = new Set(items.map((d) => d.id));
       const dedupedNext = nextItems.filter((d) => !existingIds.has(d.id));
       items = [...items, ...dedupedNext];
