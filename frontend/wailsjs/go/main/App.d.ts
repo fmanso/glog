@@ -24,6 +24,8 @@ export function ReindexSearch():Promise<void>;
 
 export function RetryFailedIndexing():Promise<number>;
 
+export function SaveAsset(arg1:string):Promise<string>;
+
 export function SaveDocument(arg1:main.DocumentDto):Promise<void>;
 
 export function SearchDocuments(arg1:string):Promise<Array<main.DocumentSummaryDto>>;

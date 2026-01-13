@@ -46,6 +46,10 @@ export function RetryFailedIndexing() {
   return window['go']['main']['App']['RetryFailedIndexing']();
 }
 
+export function SaveAsset(arg1) {
+  return window['go']['main']['App']['SaveAsset'](arg1);
+}
+
 export function SaveDocument(arg1) {
   return window['go']['main']['App']['SaveDocument'](arg1);
 }

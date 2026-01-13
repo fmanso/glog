@@ -3,7 +3,9 @@ package main
 import (
 	"embed"
 	"glog/db"
+	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/labstack/gommon/log"
@@ -14,6 +16,22 @@ import (
 
 //go:embed all:frontend/dist
 var assets embed.FS
+
+// AssetsHandler serves files from the local assets directory
+type AssetsHandler struct{}
+
+func (h *AssetsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Only handle requests for the assets directory
+	path := r.URL.Path
+	if strings.HasPrefix(path, "/assets/") {
+		// Serve from local filesystem
+		localPath := filepath.Join(".", path)
+		http.ServeFile(w, r, localPath)
+		return
+	}
+	// For other requests, return 404 (Wails will use embedded assets)
+	http.NotFound(w, r)
+}
 
 func main() {
 	// Configure log level from environment variable (default: INFO)
@@ -47,7 +65,8 @@ func main() {
 		Height:    768,
 		Frameless: true,
 		AssetServer: &assetserver.Options{
-			Assets: assets,
+			Assets:  assets,
+			Handler: &AssetsHandler{},
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup:        app.startup,

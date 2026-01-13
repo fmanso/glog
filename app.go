@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"glog/db"
 	"glog/domain"
-
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -324,4 +326,37 @@ func (a *App) ReindexSearch() error {
 // RetryFailedIndexing attempts to reindex documents that previously failed
 func (a *App) RetryFailedIndexing() (int, error) {
 	return a.db.RetryFailedIndexing()
+}
+
+// SaveAsset saves a base64-encoded image to the assets directory and returns the relative path.
+// The image is saved with a UUID-based filename to avoid collisions.
+func (a *App) SaveAsset(base64Data string) (string, error) {
+	// Remove data URL prefix if present (e.g., "data:image/png;base64,")
+	if idx := strings.Index(base64Data, ","); idx != -1 {
+		base64Data = base64Data[idx+1:]
+	}
+
+	// Decode the base64 data
+	data, err := base64.StdEncoding.DecodeString(base64Data)
+	if err != nil {
+		return "", err
+	}
+
+	// Generate a UUID-based filename
+	filename := uuid.NewString() + ".png"
+
+	// Determine assets directory (same directory as glog.db)
+	assetsDir := "assets"
+	if err := os.MkdirAll(assetsDir, 0755); err != nil {
+		return "", err
+	}
+
+	// Write the file
+	filePath := filepath.Join(assetsDir, filename)
+	if err := os.WriteFile(filePath, data, 0644); err != nil {
+		return "", err
+	}
+
+	// Return the relative path for use in markdown (use forward slashes for URL compatibility)
+	return "./assets/" + filename, nil
 }

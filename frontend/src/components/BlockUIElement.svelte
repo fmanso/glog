@@ -7,7 +7,7 @@
     import {autocompletion, completionKeymap, startCompletion} from "@codemirror/autocomplete";
     import { marked } from 'marked';
     import DOMPurify from 'dompurify';
-    import {SearchDocuments} from "../../wailsjs/go/main/App";
+    import {SearchDocuments, SaveAsset} from "../../wailsjs/go/main/App";
     import flatpickr from "flatpickr";
     import "flatpickr/dist/themes/dark.css";
     import type { Instance } from "flatpickr/dist/types/instance";
@@ -209,6 +209,51 @@
         destroyPicker();
     }
 
+    function blobToBase64(blob: Blob): Promise<string> {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    async function handlePaste(e: ClipboardEvent) {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+
+        for (const item of items) {
+            if (item.type.startsWith('image/')) {
+                e.preventDefault();
+                const blob = item.getAsFile();
+                if (!blob) return;
+
+                try {
+                    const base64 = await blobToBase64(blob);
+                    const path = await SaveAsset(base64);
+                    
+                    // Insert markdown image syntax at cursor
+                    const state = view.state;
+                    const selection = state.selection.main;
+                    const imageMarkdown = `![](${path})`;
+                    
+                    const transaction = state.update({
+                        changes: { from: selection.from, to: selection.to, insert: imageMarkdown },
+                        selection: { anchor: selection.from + imageMarkdown.length }
+                    });
+                    view.dispatch(transaction);
+                    
+                    // Trigger save
+                    block.content = view.state.doc.toString();
+                    triggerDebouncedSave();
+                } catch (err) {
+                    console.error('Failed to save image:', err);
+                }
+                return;
+            }
+        }
+    }
+
     const editorTheme = EditorView.theme({
         // Caret and selection colors
         ".cm-content, .cm-content *": { caretColor: "var(--accent)" },
@@ -304,6 +349,7 @@
         };
 
         view.dom.addEventListener('focusout', handleBlur);
+        view.dom.addEventListener('paste', handlePaste);
     });
 
     let handleBlur: (e: FocusEvent) => void;
@@ -311,6 +357,7 @@
     onDestroy(() => {
         if (view) {
             if (handleBlur) view.dom.removeEventListener('focusout', handleBlur);
+            view.dom.removeEventListener('paste', handlePaste);
             clearTimeout(saveTimeout);
             view.destroy();
         }
@@ -518,6 +565,15 @@
     .markdown-preview :global(pre code) {
         background: transparent;
         padding: 0;
+    }
+
+    /* Image styling - fit to container width */
+    .markdown-preview :global(img) {
+        max-width: 100%;
+        height: auto;
+        border-radius: 4px;
+        margin: 4px 0;
+        display: block;
     }
 
     /* Empty state placeholder */
