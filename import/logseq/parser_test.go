@@ -89,6 +89,21 @@ func TestParsePageFilename(t *testing.T) {
 			filename:  "file.name.with.dots.md",
 			wantTitle: "file.name.with.dots",
 		},
+		{
+			name:      "URL encoded slash",
+			filename:  "Project%2FNotes.md",
+			wantTitle: "Project/Notes",
+		},
+		{
+			name:      "multiple slashes",
+			filename:  "Work%2FProjects%2FAlpha.md",
+			wantTitle: "Work/Projects/Alpha",
+		},
+		{
+			name:      "slash with spaces",
+			filename:  "My%20Project%2FSubfolder.md",
+			wantTitle: "My Project/Subfolder",
+		},
 	}
 
 	for _, tt := range tests {
@@ -212,6 +227,14 @@ func TestParseContent(t *testing.T) {
 			wantBlocks: 2,
 			checkFirst: "Link to [[Another Page]]",
 			checkLast:  "Also references [[Project A]]",
+		},
+		{
+			name: "wikilinks with slashes",
+			content: `- See [[Project/Notes]] for details
+- Check [[Work/Projects/Alpha]]`,
+			wantBlocks: 2,
+			checkFirst: "See [[Project/Notes]] for details",
+			checkLast:  "Check [[Work/Projects/Alpha]]",
 		},
 		{
 			name: "with properties",
@@ -427,5 +450,160 @@ func TestParseBulletLine(t *testing.T) {
 				t.Errorf("isBullet = %v, want %v", isBullet, tt.wantBullet)
 			}
 		})
+	}
+}
+
+func TestParseContentCodeBlocks(t *testing.T) {
+	tests := []struct {
+		name        string
+		content     string
+		wantBlocks  int
+		wantContent string
+	}{
+		{
+			name: "code block preserves newlines",
+			content: "- Here is code:\n" +
+				"  ```go\n" +
+				"  func main() {\n" +
+				"      fmt.Println(\"Hello\")\n" +
+				"  }\n" +
+				"  ```",
+			wantBlocks:  1,
+			wantContent: "Here is code:\n```go\nfunc main() {\n    fmt.Println(\"Hello\")\n}\n```",
+		},
+		{
+			name: "code block with empty lines",
+			content: "- Code:\n" +
+				"  ```\n" +
+				"  line1\n" +
+				"  \n" +
+				"  line3\n" +
+				"  ```",
+			wantBlocks:  1,
+			wantContent: "Code:\n```\nline1\n\nline3\n```",
+		},
+		{
+			name: "bullet starting with code fence",
+			content: "- ```js\n" +
+				"  console.log('hi')\n" +
+				"  ```",
+			wantBlocks:  1,
+			wantContent: "```js\nconsole.log('hi')\n```",
+		},
+		{
+			name: "multiple blocks one with code",
+			content: "- First block\n" +
+				"- Code block:\n" +
+				"  ```\n" +
+				"  code here\n" +
+				"  ```\n" +
+				"- Third block",
+			wantBlocks:  3,
+			wantContent: "First block", // first block content
+		},
+		{
+			name:        "inline code not affected",
+			content:     "- Use `fmt.Println()` for output",
+			wantBlocks:  1,
+			wantContent: "Use `fmt.Println()` for output",
+		},
+		{
+			name: "code block at nested indent",
+			content: "- Parent\n" +
+				"  - Child with code:\n" +
+				"    ```python\n" +
+				"    print('hello')\n" +
+				"    ```",
+			wantBlocks:  2,
+			wantContent: "Parent", // first block
+		},
+		{
+			name: "text after code block",
+			content: "- Block with code:\n" +
+				"  ```\n" +
+				"  code\n" +
+				"  ```\n" +
+				"  And some text after",
+			wantBlocks:  1,
+			wantContent: "Block with code:\n```\ncode\n```\nAnd some text after",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			blocks := ParseContent(tt.content)
+
+			if len(blocks) != tt.wantBlocks {
+				t.Errorf("ParseContent() returned %d blocks, want %d", len(blocks), tt.wantBlocks)
+				for i, b := range blocks {
+					t.Logf("  Block %d: indent=%d content=%q", i, b.Indent, b.Content)
+				}
+				return
+			}
+
+			if tt.wantContent != "" && blocks[0].Content != tt.wantContent {
+				t.Errorf("Block content = %q, want %q", blocks[0].Content, tt.wantContent)
+			}
+		})
+	}
+}
+
+func TestParseContentCodeBlocksMultiple(t *testing.T) {
+	// Test specific block contents in multi-block scenarios
+	content := "- First block\n" +
+		"- Code block:\n" +
+		"  ```\n" +
+		"  code here\n" +
+		"  ```\n" +
+		"- Third block"
+
+	blocks := ParseContent(content)
+
+	if len(blocks) != 3 {
+		t.Fatalf("Expected 3 blocks, got %d", len(blocks))
+	}
+
+	expectedContents := []string{
+		"First block",
+		"Code block:\n```\ncode here\n```",
+		"Third block",
+	}
+
+	for i, expected := range expectedContents {
+		if blocks[i].Content != expected {
+			t.Errorf("Block %d content = %q, want %q", i, blocks[i].Content, expected)
+		}
+	}
+}
+
+func TestParseContentNestedCodeBlock(t *testing.T) {
+	content := "- Parent\n" +
+		"  - Child with code:\n" +
+		"    ```python\n" +
+		"    def hello():\n" +
+		"        print('hello')\n" +
+		"    ```"
+
+	blocks := ParseContent(content)
+
+	if len(blocks) != 2 {
+		t.Fatalf("Expected 2 blocks, got %d", len(blocks))
+	}
+
+	// Check first block
+	if blocks[0].Content != "Parent" {
+		t.Errorf("First block content = %q, want %q", blocks[0].Content, "Parent")
+	}
+	if blocks[0].Indent != 0 {
+		t.Errorf("First block indent = %d, want 0", blocks[0].Indent)
+	}
+
+	// Check second block with code
+	expectedContent := "Child with code:\n```python\ndef hello():\n    print('hello')\n```"
+	if blocks[1].Content != expectedContent {
+		t.Errorf("Second block content = %q, want %q", blocks[1].Content, expectedContent)
+	}
+	if blocks[1].Indent != 1 {
+		t.Errorf("Second block indent = %d, want 1", blocks[1].Indent)
 	}
 }

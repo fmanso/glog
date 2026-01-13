@@ -63,6 +63,8 @@ func ParseContent(content string) []*domain.Block {
 
 	var currentBlock *domain.Block
 	var continuationIndent int
+	var inCodeBlock bool  // Track whether we're inside a fenced code block
+	var hadCodeBlock bool // Track if current block has had a code block (for post-code-block formatting)
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -83,6 +85,10 @@ func ParseContent(content string) []*domain.Block {
 				blocks = append(blocks, currentBlock)
 			}
 
+			// Reset code block state for new block
+			inCodeBlock = false
+			hadCodeBlock = false
+
 			// Start new block
 			currentBlock = &domain.Block{
 				ID:      domain.BlockID(uuid.New()),
@@ -90,15 +96,42 @@ func ParseContent(content string) []*domain.Block {
 				Indent:  indent,
 			}
 			continuationIndent = indent
+
+			// Check if bullet content itself starts a code fence
+			if strings.HasPrefix(strings.TrimSpace(content), "```") {
+				inCodeBlock = true
+			}
 		} else if currentBlock != nil {
 			// This is a continuation line (property, SCHEDULED, or multi-line content)
 			trimmed := strings.TrimSpace(line)
-			if trimmed != "" {
-				// Append to current block content
-				if currentBlock.Content != "" {
-					currentBlock.Content += " " + trimmed
-				} else {
-					currentBlock.Content = trimmed
+
+			// Check for code fence toggle
+			if strings.HasPrefix(trimmed, "```") {
+				inCodeBlock = !inCodeBlock
+				if !inCodeBlock {
+					// Just closed a code block
+					hadCodeBlock = true
+				}
+			}
+
+			if inCodeBlock || strings.HasPrefix(trimmed, "```") {
+				// Inside code block or this is a fence line: preserve newlines and relative indentation
+				strippedLine := stripContinuationIndent(line, continuationIndent)
+				currentBlock.Content += "\n" + strippedLine
+			} else if hadCodeBlock {
+				// After a code block - preserve newlines to maintain formatting
+				strippedLine := stripContinuationIndent(line, continuationIndent)
+				if strings.TrimSpace(strippedLine) != "" {
+					currentBlock.Content += "\n" + strippedLine
+				}
+			} else {
+				// Outside code block: original space-joining behavior
+				if trimmed != "" {
+					if currentBlock.Content != "" {
+						currentBlock.Content += " " + trimmed
+					} else {
+						currentBlock.Content = trimmed
+					}
 				}
 			}
 		} else if strings.TrimSpace(line) != "" {
@@ -109,6 +142,10 @@ func ParseContent(content string) []*domain.Block {
 				Indent:  0,
 			}
 			continuationIndent = 0
+			// Check if this starts a code fence
+			if strings.HasPrefix(strings.TrimSpace(line), "```") {
+				inCodeBlock = true
+			}
 		}
 
 		// Ignore the continuationIndent variable warning - kept for potential future use
@@ -174,6 +211,31 @@ func parseBulletLine(line string) (int, string, bool) {
 	}
 
 	return indent, remaining, false
+}
+
+// stripContinuationIndent removes the base indentation level from a continuation line
+// while preserving any additional indentation (e.g., for code inside code blocks).
+// In Logseq, continuation lines are indented at (baseIndent * 2 + 2) spaces.
+func stripContinuationIndent(line string, baseIndent int) string {
+	// Continuation lines are indented 2 spaces beyond the bullet's indentation
+	// Each indent level = 2 spaces, plus 2 spaces for content continuation
+	spacesToRemove := (baseIndent * 2) + 2
+
+	i := 0
+	removed := 0
+	for i < len(line) && removed < spacesToRemove {
+		if line[i] == ' ' {
+			removed++
+			i++
+		} else if line[i] == '\t' {
+			// Treat tab as equivalent to reaching an indent level
+			removed += 2
+			i++
+		} else {
+			break
+		}
+	}
+	return line[i:]
 }
 
 // ParseFile parses a Logseq file into a domain.Document.

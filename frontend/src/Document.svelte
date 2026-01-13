@@ -19,7 +19,9 @@
         }
 
         if (params.title) {
-            document = await OpenDocumentByTitle(params.title);
+            // Decode URL-encoded title (handles slashes and special characters)
+            const decodedTitle = decodeURIComponent(params.title);
+            document = await OpenDocumentByTitle(decodedTitle);
             return;
         }
 
