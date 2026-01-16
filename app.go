@@ -284,6 +284,11 @@ func (a *App) GetScheduledTasks() ([]ScheduledTaskDto, error) {
 			}
 		}
 
+		// Skip tasks marked as done
+		if db.IsDone(blockContent) {
+			continue
+		}
+
 		scheduledTaskDtos = append(scheduledTaskDtos, ScheduledTaskDto{
 			Id:          task.ID.String(),
 			Title:       doc.Title,

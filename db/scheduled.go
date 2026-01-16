@@ -19,6 +19,12 @@ type scheduledTasks struct {
 }
 
 var scheduledRegex = regexp.MustCompile(`/scheduled (\d{4}-\d{2}-\d{2})`)
+var doneRegex = regexp.MustCompile(`/DONE`)
+
+// IsDone checks if a block content contains the /DONE marker
+func IsDone(content string) bool {
+	return doneRegex.MatchString(content)
+}
 
 func newScheduledTasks(db *bolt.DB) (*scheduledTasks, error) {
 	scheduledIndexKey := []byte("scheduled_index")

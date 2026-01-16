@@ -22,6 +22,7 @@
     function cleanDescription(description: string) {
         const withoutSchedule = description
             .replace(/\/?scheduled\s+\d{4}-\d{2}-\d{2}/gi, '')
+            .replace(/\/DONE/g, '')
             .trim();
         return withoutSchedule.replace(/(?:\r\n|\r|\n)/g, '<br>');
     }

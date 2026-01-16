@@ -368,9 +368,17 @@
         setDocString(block.content ?? "");
     }
 
+    const doneRegex = /\/DONE/;
+    $: isDone = doneRegex.test(block.content ?? "");
+    
+    function processContent(content: string): string {
+        // Remove /DONE from display
+        return content.replace(/\/DONE/g, '').trim();
+    }
+
     $: markdownHtml = DOMPurify.sanitize(
         marked.parse(
-            replaceLinks(block.content ?? ""), { async: false }) as string);
+            replaceLinks(processContent(block.content ?? "")), { async: false }) as string);
     let isEditing = true;
     let saveTimeout: any;
     function triggerDebouncedSave() {
@@ -397,6 +405,7 @@
 
     {#if !isEditing}
         <div class="markdown-preview"
+             class:done={isDone}
              role="textbox"
              tabindex="0"
              aria-label="Edit block"
@@ -516,6 +525,12 @@
         width: 100%;
         min-height: 1.6em;
         cursor: text;
+    }
+
+    .markdown-preview.done {
+        text-decoration: line-through;
+        text-align: left;
+        opacity: 0.6;
     }
 
     .markdown-preview:focus {
