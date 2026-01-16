@@ -1,12 +1,20 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { GetReferences } from '../../wailsjs/go/main/App';
+    import { GetReferences, OpenDocument, SaveDocument } from '../../wailsjs/go/main/App';
     import type { main } from '../../wailsjs/go/models'
     import DOMPurify from "dompurify";
     import {marked} from "marked";
     import { replaceLinks } from './replaceLinks';
+    import BlockUIElement from './BlockUIElement.svelte';
+    
     export let title: string = '';
     let references: main.DocumentReferenceDto[] = [];
+    
+    // Editing state
+    let currentEditingId: string | null = null;
+    let editingDocument: main.DocumentDto | null = null;
+    let editingBlock: main.BlockDto | null = null;
+    let loadingBlockId: string | null = null;
 
     let lastTitle = '';
     let requestId = 0;
@@ -82,6 +90,60 @@
         }
     }
 
+    function requestEdit(id: string | null) {
+        const wasEditing = currentEditingId !== null;
+        currentEditingId = id;
+        if (id === null) {
+            editingDocument = null;
+            editingBlock = null;
+            if (wasEditing) {
+                handleEditExit();
+            }
+        }
+    }
+
+    async function startEditing(docId: string, blockId: string) {
+        if (loadingBlockId) return;
+        
+        loadingBlockId = blockId;
+        try {
+            const doc = await OpenDocument(docId);
+            editingDocument = doc;
+            // BlockReferenceDto uses Pascal case (Id), BlockDto uses lowercase (id)
+            editingBlock = doc.blocks.find((b: main.BlockDto) => b.id === blockId) || null;
+            
+            if (editingBlock) {
+                currentEditingId = blockId;
+            }
+        } catch (err) {
+            console.error('Failed to load document for editing:', err);
+        } finally {
+            loadingBlockId = null;
+        }
+    }
+
+    async function handleSave() {
+        if (!editingDocument || !editingBlock) return;
+        
+        try {
+            // Update the block in the document
+            const blockIndex = editingDocument.blocks.findIndex((b: main.BlockDto) => b.id === editingBlock!.id);
+            if (blockIndex !== -1) {
+                editingDocument.blocks[blockIndex] = editingBlock;
+            }
+            
+            await SaveDocument(editingDocument);
+        } catch (err) {
+            console.error('Failed to save:', err);
+        }
+    }
+
+    async function handleEditExit() {
+        // Invalidate cache for current title and reload references
+        cache.delete(title);
+        await loadReferences(title);
+    }
+
     const renderBlock = (content: string) =>
         DOMPurify.sanitize(
             marked.parse(
@@ -99,9 +161,37 @@
             {#if ref.Blocks?.length}
                 <div class="reference-blocks">
                     {#each ref.Blocks as block}
-                        <div class="reference-block" style="margin-left: {block.Indent * 20}px">
-                            {@html renderBlock(block.Content)}
-                        </div>
+                        {#if currentEditingId === block.Id && editingBlock}
+                            <div class="reference-editor" style="margin-left: {block.Indent * 20}px">
+                                <BlockUIElement
+                                    block={editingBlock}
+                                    {currentEditingId}
+                                    {requestEdit}
+                                    on:save={handleSave}
+                                />
+                            </div>
+                        {:else}
+                            <div 
+                                class="reference-block"
+                                class:loading={loadingBlockId === block.Id}
+                                style="margin-left: {block.Indent * 20}px"
+                                role="button"
+                                tabindex="0"
+                                on:click={() => startEditing(ref.Id, block.Id)}
+                                on:keydown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        startEditing(ref.Id, block.Id);
+                                    }
+                                }}
+                            >
+                                {#if loadingBlockId === block.Id}
+                                    <span class="loading-text">Loading...</span>
+                                {:else}
+                                    {@html renderBlock(block.Content)}
+                                {/if}
+                            </div>
+                        {/if}
                     {/each}
                 </div>
             {/if}
@@ -176,12 +266,36 @@
         color: var(--text-dim);
         font-size: 0.95rem;
         line-height: 1.4;
-        padding: 2px 0;
-        transition: color 0.15s ease;
+        padding: 2px 4px;
+        margin-left: -4px;
+        transition: color 0.15s ease, background 0.15s ease;
+        cursor: text;
+        border-radius: 4px;
     }
 
     .reference-block:hover {
         color: var(--text);
+        background: rgba(255, 255, 255, 0.06);
+    }
+
+    .reference-block:focus {
+        outline: none;
+        background: rgba(255, 255, 255, 0.06);
+    }
+
+    .reference-block.loading {
+        cursor: wait;
+        opacity: 0.7;
+    }
+
+    .loading-text {
+        color: var(--text-dim);
+        font-style: italic;
+    }
+
+    .reference-editor {
+        margin: 0;
+        padding: 2px 0;
     }
 
     .reference-block :global(p) {
