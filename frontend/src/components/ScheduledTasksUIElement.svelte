@@ -1,8 +1,14 @@
 <script lang="ts">
     import type { main } from '../../wailsjs/go/models';
-    import { GetScheduledTasks } from '../../wailsjs/go/main/App';
+    import { GetScheduledTasks, OpenDocument, SaveDocument } from '../../wailsjs/go/main/App';
     import { onMount } from 'svelte';
+    import BlockUIElement from './BlockUIElement.svelte';
+
     let tasks: main.ScheduledTaskDto[] = [];
+    let currentEditingId: string | null = null;
+    let editingDocument: main.DocumentDto | null = null;
+    let editingBlock: main.BlockDto | null = null;
+    let loadingTaskId: string | null = null;
 
     onMount(async () => {
         tasks = await GetScheduledTasks();
@@ -19,6 +25,65 @@
             .trim();
         return withoutSchedule.replace(/(?:\r\n|\r|\n)/g, '<br>');
     }
+
+    function requestEdit(id: string | null) {
+        const wasEditing = currentEditingId !== null;
+        currentEditingId = id;
+        if (id === null) {
+            editingDocument = null;
+            editingBlock = null;
+            if (wasEditing) {
+                // Refresh tasks when exiting edit mode
+                handleEditExit();
+            }
+        }
+    }
+
+    async function startEditing(task: main.ScheduledTaskDto) {
+        if (loadingTaskId) return;
+        
+        loadingTaskId = task.block_id;
+        try {
+            const doc = await OpenDocument(task.doc_id);
+            editingDocument = doc;
+            editingBlock = doc.blocks.find((b: main.BlockDto) => b.id === task.block_id) || null;
+            
+            if (editingBlock) {
+                currentEditingId = task.block_id;
+            }
+        } catch (err) {
+            console.error('Failed to load document for editing:', err);
+        } finally {
+            loadingTaskId = null;
+        }
+    }
+
+    async function handleSave() {
+        if (!editingDocument || !editingBlock) return;
+        
+        try {
+            // Update the block in the document
+            const blockIndex = editingDocument.blocks.findIndex((b: main.BlockDto) => b.id === editingBlock!.id);
+            if (blockIndex !== -1) {
+                editingDocument.blocks[blockIndex] = editingBlock;
+            }
+            
+            await SaveDocument(editingDocument);
+            // Don't exit edit mode or refresh here - let the user continue editing
+            // The task list will refresh when edit mode is exited
+        } catch (err) {
+            console.error('Failed to save:', err);
+        }
+    }
+
+    async function handleEditExit() {
+        // Refresh the tasks list when exiting edit mode to show updated description
+        tasks = await GetScheduledTasks();
+    }
+
+    function handleDescriptionClick(task: main.ScheduledTaskDto) {
+        startEditing(task);
+    }
 </script>
 
 {#if tasks && tasks.length}
@@ -31,7 +96,36 @@
                         <div class="task-title">
                             <a class="task-link" href={`#/doc/${task.doc_id}`}>{task.title}</a>
                         </div>
-                        <div class="task-desc">{@html cleanDescription(task.description)}</div>
+                        {#if currentEditingId === task.block_id && editingBlock}
+                            <div class="task-editor">
+                                <BlockUIElement
+                                    block={editingBlock}
+                                    {currentEditingId}
+                                    {requestEdit}
+                                    on:save={handleSave}
+                                />
+                            </div>
+                        {:else}
+                            <div 
+                                class="task-desc" 
+                                class:loading={loadingTaskId === task.block_id}
+                                role="button"
+                                tabindex="0"
+                                on:click={() => handleDescriptionClick(task)}
+                                on:keydown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        handleDescriptionClick(task);
+                                    }
+                                }}
+                            >
+                                {#if loadingTaskId === task.block_id}
+                                    <span class="loading-text">Loading...</span>
+                                {:else}
+                                    {@html cleanDescription(task.description)}
+                                {/if}
+                            </div>
+                        {/if}
                         {#if task.due_date}
                             <div class="task-meta">
                                 <span class="pill">Scheduled {formatDate(task.due_date)}</span>
@@ -106,7 +200,35 @@
         white-space: pre-line;
         padding-left: 0;
         border-left: none;
-        transition: color 0.15s ease;
+        transition: color 0.15s ease, background 0.15s ease;
+        cursor: text;
+        border-radius: 4px;
+        padding: 2px 4px;
+        margin-left: -4px;
+    }
+
+    .task-desc:hover {
+        background: rgba(255, 255, 255, 0.06);
+    }
+
+    .task-desc:focus {
+        outline: none;
+        background: rgba(255, 255, 255, 0.06);
+    }
+
+    .task-desc.loading {
+        cursor: wait;
+        opacity: 0.7;
+    }
+
+    .loading-text {
+        color: var(--text-dim);
+        font-style: italic;
+    }
+
+    .task-editor {
+        margin: 0;
+        padding: 2px 0;
     }
 
     .task-item:hover .task-desc {
