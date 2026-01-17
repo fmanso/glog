@@ -66,7 +66,7 @@ func TestScheduled_RemoveObsoleteTasks(t *testing.T) {
 
 	doc := &domain.Document{
 		ID:    domain.DocumentID(uuid.New()),
-		Title: "Test Document",
+		Title: "Test Document " + uuid.NewString(),
 		Date:  time.Now().UTC(),
 		Blocks: []*domain.Block{
 			{

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"errors"
+
 	"glog/domain"
 	"strings"
 	"sync"
@@ -15,6 +16,7 @@ import (
 )
 
 var ErrDocumentNotFound = errors.New("document not found")
+var ErrDuplicateTitle = errors.New("document title already exists")
 
 // failedIndexEntry tracks a document that failed to index
 type failedIndexEntry struct {
@@ -312,8 +314,12 @@ func (store *DocumentStore) saveTimeIndex(tx *bolt.Tx, doc *domain.Document) err
 func (store *DocumentStore) saveTitleIndex(tx *bolt.Tx, doc *domain.Document) error {
 	bucket := tx.Bucket(store.bucketTitleIndex)
 	titleLower := strings.ToLower(doc.Title)
-	err := bucket.Put([]byte(titleLower), []byte(doc.ID.String()))
-	if err != nil {
+
+	if existing := bucket.Get([]byte(titleLower)); existing != nil && string(existing) != doc.ID.String() {
+		return ErrDuplicateTitle
+	}
+
+	if err := bucket.Put([]byte(titleLower), []byte(doc.ID.String())); err != nil {
 		return err
 	}
 

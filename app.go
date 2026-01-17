@@ -170,6 +170,15 @@ func (a *App) OpenDocumentByTitle(title string) (DocumentDto, error) {
 		if errors.Is(err, db.ErrDocumentNotFound) {
 			return a.createNewDocument(title)
 		}
+		if errors.Is(err, db.ErrDuplicateTitle) {
+			// Another request created the document concurrently.
+			// Load again by title and return the winner.
+			domainDoc, loadErr := a.db.LoadDocumentByTitle(title)
+			if loadErr != nil {
+				return DocumentDto{}, loadErr
+			}
+			return ToDocumentDto(domainDoc), nil
+		}
 		return DocumentDto{}, err
 	}
 

@@ -33,9 +33,10 @@ func TestIndexHealthTracking(t *testing.T) {
 	}
 
 	// Save a document successfully
+	title := "Test Document " + uuid.NewString()
 	doc := &domain.Document{
 		ID:    domain.DocumentID(uuid.New()),
-		Title: "Test Document",
+		Title: title,
 		Date:  time.Now(),
 		Blocks: []*domain.Block{
 			{
@@ -79,7 +80,7 @@ func TestReindexSearchHealth(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		doc := &domain.Document{
 			ID:    domain.DocumentID(uuid.New()),
-			Title: "Test Document",
+			Title: "Test Document " + uuid.NewString(),
 			Date:  time.Now(),
 			Blocks: []*domain.Block{
 				{
@@ -125,7 +126,7 @@ func TestRetryFailedIndexing(t *testing.T) {
 	// Save a document
 	doc := &domain.Document{
 		ID:    domain.DocumentID(uuid.New()),
-		Title: "Test Document",
+		Title: "Test Document " + uuid.NewString(),
 		Date:  time.Now(),
 		Blocks: []*domain.Block{
 			{

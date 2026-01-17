@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"glog/domain"
 	"os"
 	"testing"
@@ -46,8 +47,9 @@ func TestDocumentStore_Save(t *testing.T) {
 
 	doc := &domain.Document{
 		ID:    domain.DocumentID(uuid.New()),
-		Title: "Test Document",
+		Title: uuid.NewString() + " Test Document",
 		Date:  time.Now().UTC(),
+
 		Blocks: []*domain.Block{
 			{
 				ID:      domain.BlockID(uuid.New()),
@@ -247,6 +249,50 @@ func TestLoadDocumentByTitle(t *testing.T) {
 
 	if got.ID != doc.ID {
 		t.Errorf("Loaded document ID mismatch: got %v, want %v", got.ID, doc.ID)
+	}
+}
+
+func TestDocumentStore_SaveRejectsDuplicateTitle(t *testing.T) {
+	store, err := NewDocumentStore("./testsaveduplicatetitle.db")
+	if err != nil {
+		t.Fatalf("Failed to create DocumentStore: %v", err)
+	}
+	defer func() {
+		err := store.Close()
+		if err != nil {
+			t.Errorf("Failed to close DocumentStore: %v", err)
+		}
+
+		_ = os.Remove("./testsaveduplicatetitle.db")
+		_ = os.RemoveAll("./testsaveduplicatetitle.db.bleve")
+	}()
+
+	doc1 := &domain.Document{
+		ID:    domain.DocumentID(uuid.New()),
+		Title: "Dupe Title",
+		Date:  time.Now().UTC(),
+		Blocks: []*domain.Block{{
+			ID:      domain.BlockID(uuid.New()),
+			Content: "Doc 1",
+			Indent:  0,
+		}},
+	}
+	if err := store.Save(doc1); err != nil {
+		t.Fatalf("Failed to save first document: %v", err)
+	}
+
+	doc2 := &domain.Document{
+		ID:    domain.DocumentID(uuid.New()),
+		Title: "Dupe Title",
+		Date:  time.Now().UTC(),
+		Blocks: []*domain.Block{{
+			ID:      domain.BlockID(uuid.New()),
+			Content: "Doc 2",
+			Indent:  0,
+		}},
+	}
+	if err := store.Save(doc2); !errors.Is(err, ErrDuplicateTitle) {
+		t.Fatalf("Expected ErrDuplicateTitle, got %v", err)
 	}
 }
 
@@ -574,8 +620,9 @@ func TestReindexSearchConcurrentSave(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		doc := &domain.Document{
 			ID:    domain.DocumentID(uuid.New()),
-			Title: "Initial Document",
+			Title: uuid.NewString() + " Initial Document",
 			Date:  time.Now().UTC(),
+
 			Blocks: []*domain.Block{
 				{
 					ID:      domain.BlockID(uuid.New()),
@@ -601,8 +648,9 @@ func TestReindexSearchConcurrentSave(t *testing.T) {
 		for i := 0; i < 5; i++ {
 			doc := &domain.Document{
 				ID:    domain.DocumentID(uuid.New()),
-				Title: "Concurrent Document",
+				Title: uuid.NewString() + " Concurrent Document",
 				Date:  time.Now().UTC(),
+
 				Blocks: []*domain.Block{
 					{
 						ID:      domain.BlockID(uuid.New()),
@@ -660,8 +708,9 @@ func TestReindexSearchConcurrentSearch(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		doc := &domain.Document{
 			ID:    domain.DocumentID(uuid.New()),
-			Title: "Test Document",
+			Title: uuid.NewString() + " Test Document",
 			Date:  time.Now().UTC(),
+
 			Blocks: []*domain.Block{
 				{
 					ID:      domain.BlockID(uuid.New()),
