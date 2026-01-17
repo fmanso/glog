@@ -52,6 +52,11 @@ func TestReferences_GetReferences(t *testing.T) {
 				Content: "This document references [[Test Document Title]].",
 				Indent:  0,
 			},
+			{
+				ID:      domain.BlockID(uuid.New()),
+				Content: "This document references [[Test Document Title 2]].",
+				Indent:  0,
+			},
 		},
 	}
 
@@ -67,6 +72,72 @@ func TestReferences_GetReferences(t *testing.T) {
 
 	if len(results) == 0 {
 		t.Fatal("Expected to find at least one referencing document, found none")
+	}
+
+	results, err = store.GetReferences("Test Document Title 2")
+	if err != nil {
+		t.Fatalf("Failed to search for word: %v", err)
+	}
+
+	if len(results) == 0 {
+		t.Fatal("Expected to find at least one referencing document, found none")
+	}
+}
+
+func TestReferences_GetReferences_DoesNotMatchSubstrings(t *testing.T) {
+	store, err := NewDocumentStore("./testreferences.db")
+	if err != nil {
+		t.Fatalf("Failed to create DocumentStore: %v", err)
+	}
+	defer func() {
+		err := store.Close()
+		if err != nil {
+			t.Errorf("Failed to close DocumentStore: %v", err)
+		}
+
+		_ = os.Remove("./testreferences.db")
+		_ = os.RemoveAll("./testreferences.db.bleve")
+	}()
+
+	referencedDoc := &domain.Document{
+		ID:    domain.DocumentID(uuid.New()),
+		Title: "PAGINA",
+		Date:  time.Now().UTC(),
+		Blocks: []*domain.Block{{
+			ID:      domain.BlockID(uuid.New()),
+			Content: "Test Content",
+			Indent:  0,
+		}},
+	}
+
+	err = store.Save(referencedDoc)
+	if err != nil {
+		t.Fatalf("Failed to save document: %v", err)
+	}
+
+	referencingDoc := &domain.Document{
+		ID:    domain.DocumentID(uuid.New()),
+		Title: "Referencing Document",
+		Date:  time.Now().UTC(),
+		Blocks: []*domain.Block{{
+			ID:      domain.BlockID(uuid.New()),
+			Content: "Points to [[PAGINA 2]] only.",
+			Indent:  0,
+		}},
+	}
+
+	err = store.Save(referencingDoc)
+	if err != nil {
+		t.Fatalf("Failed to save document: %v", err)
+	}
+
+	results, err := store.GetReferences("PAGINA")
+	if err != nil {
+		t.Fatalf("Failed to search for word: %v", err)
+	}
+
+	if len(results) != 0 {
+		t.Fatalf("Expected no references to PAGINA, got %d", len(results))
 	}
 }
 

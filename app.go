@@ -221,6 +221,31 @@ type BlockReferenceDto struct {
 	Indent  int
 }
 
+func computeParentIndexes(blocks []*domain.Block) []int {
+	parents := make([]int, len(blocks))
+	stack := make([]int, 0, 16)
+
+	for i, block := range blocks {
+		for len(stack) > 0 {
+			top := stack[len(stack)-1]
+			if blocks[top].Indent < block.Indent {
+				break
+			}
+			stack = stack[:len(stack)-1]
+		}
+
+		if len(stack) == 0 {
+			parents[i] = -1
+		} else {
+			parents[i] = stack[len(stack)-1]
+		}
+
+		stack = append(stack, i)
+	}
+
+	return parents
+}
+
 func (a *App) GetReferences(title string) ([]DocumentReferenceDto, error) {
 	titleLower := strings.ToLower(title)
 	docIDs, err := a.db.GetReferences(title)
@@ -235,30 +260,32 @@ func (a *App) GetReferences(title string) ([]DocumentReferenceDto, error) {
 			return nil, err
 		}
 
-		var blocks []BlockReferenceDto
-		for i := 0; i < len(domainDoc.Blocks); i++ {
-			block := domainDoc.Blocks[i]
-			if strings.Contains(strings.ToLower(block.Content), titleLower) {
-				// Add the referencing block
-				blocks = append(blocks, BlockReferenceDto{
-					Id:      block.ID.String(),
-					Content: block.Content,
-					Indent:  block.Indent,
-				})
-				// Add child blocks (blocks with greater indent until we hit same or lower indent)
-				parentIndent := block.Indent
-				for j := i + 1; j < len(domainDoc.Blocks); j++ {
-					childBlock := domainDoc.Blocks[j]
-					if childBlock.Indent <= parentIndent {
-						break
-					}
-					blocks = append(blocks, BlockReferenceDto{
-						Id:      childBlock.ID.String(),
-						Content: childBlock.Content,
-						Indent:  childBlock.Indent,
-					})
-				}
+		parents := computeParentIndexes(domainDoc.Blocks)
+		include := make([]bool, len(domainDoc.Blocks))
+
+		needle := "[[" + titleLower + "]]"
+		for i, block := range domainDoc.Blocks {
+			contentLower := strings.ToLower(block.Content)
+			if !strings.Contains(contentLower, needle) {
+				continue
 			}
+
+			include[i] = true
+			for parent := parents[i]; parent != -1; parent = parents[parent] {
+				include[parent] = true
+			}
+		}
+
+		blocks := make([]BlockReferenceDto, 0)
+		for i, block := range domainDoc.Blocks {
+			if !include[i] {
+				continue
+			}
+			blocks = append(blocks, BlockReferenceDto{
+				Id:      block.ID.String(),
+				Content: block.Content,
+				Indent:  block.Indent,
+			})
 		}
 
 		references = append(references, DocumentReferenceDto{
