@@ -40,7 +40,7 @@
             </svg>
         </a>
         <div class="drag-spacer" aria-hidden="true"></div>
-        <button class="icon-link close-btn" on:click={Quit} title="Close" aria-label="Close">
+        <button class="icon-link close-btn" on:click={Quit} title="Close" aria-label="Close" data-tooltip="Close">
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M18 6 6 18"/>
                 <path d="M6 6 18 18"/>
