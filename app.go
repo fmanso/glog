@@ -57,9 +57,10 @@ func (a *App) DeleteDocument(id string) error {
 }
 
 func (a *App) LoadJournalToday() (DocumentDto, error) {
-	// Get current local time and normalize to start of day
-	now := time.Now()
-	t := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	// Get current time in UTC and normalize to start of day
+	// Using UTC ensures consistency with how journal index keys are stored
+	now := time.Now().UTC()
+	t := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 
 	from := t
 	to := t.Add(24 * time.Hour)
@@ -68,8 +69,9 @@ func (a *App) LoadJournalToday() (DocumentDto, error) {
 		return ToDocumentDto(docs[0]), nil
 	}
 
-	// Create title based on date (e.g., "Monday, January 2, 2006")
-	title := t.Format("Monday, January 2, 2006")
+	// Create title based on local date for user-friendly display
+	localNow := time.Now()
+	title := localNow.Format("Monday, January 2, 2006")
 	return DocumentDto{
 		Id:        uuid.NewString(),
 		Title:     title,

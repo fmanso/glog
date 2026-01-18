@@ -331,7 +331,13 @@ func (store *DocumentStore) saveJournalIndex(tx *bolt.Tx, doc *domain.Document) 
 	if doc.IsJournal {
 		// Index by date (normalized to start of day in UTC) -> document ID
 		// This allows efficient lookup of journals by date
-		dateKey := time.Date(doc.Date.Year(), doc.Date.Month(), doc.Date.Day(), 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
+		// IMPORTANT: Convert to UTC first, then extract year/month/day to ensure
+		// consistency between initial save and subsequent saves after round-trip.
+		// Without this, a local date like "Jan 18 00:00 +0500" would create key "Jan 18 UTC"
+		// on first save, but after being stored as "Jan 17 19:00 UTC" and loaded back,
+		// the next save would create key "Jan 17 UTC", causing duplicate index entries.
+		utcDate := doc.Date.UTC()
+		dateKey := time.Date(utcDate.Year(), utcDate.Month(), utcDate.Day(), 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
 		return bucket.Put([]byte(dateKey), []byte(doc.ID.String()))
 	}
 	return nil
@@ -492,9 +498,12 @@ func (store *DocumentStore) LoadJournals(from time.Time, to time.Time) ([]*domai
 		bucket := tx.Bucket(store.bucketJournalIndex)
 		cursor := bucket.Cursor()
 
-		// Normalize to start of day in UTC for consistent key lookup
-		startDay := time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, time.UTC)
-		endDay := time.Date(to.Year(), to.Month(), to.Day(), 0, 0, 0, 0, time.UTC)
+		// Convert to UTC first, then normalize to start of day for consistent key lookup
+		// This matches how saveJournalIndex creates keys.
+		fromUTC := from.UTC()
+		toUTC := to.UTC()
+		startDay := time.Date(fromUTC.Year(), fromUTC.Month(), fromUTC.Day(), 0, 0, 0, 0, time.UTC)
+		endDay := time.Date(toUTC.Year(), toUTC.Month(), toUTC.Day(), 0, 0, 0, 0, time.UTC)
 
 		// Iterate through the journal index in the date range
 		minKey := []byte(startDay.Format(time.RFC3339))
@@ -731,7 +740,9 @@ func (store *DocumentStore) Delete(id uuid.UUID) error {
 			journalBucket := tx.Bucket(store.bucketJournalIndex)
 			if journalBucket != nil {
 				date, _ := time.Parse(time.RFC3339, docDb.Date)
-				dateKey := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
+				// Use UTC to match how saveJournalIndex creates keys
+				utcDate := date.UTC()
+				dateKey := time.Date(utcDate.Year(), utcDate.Month(), utcDate.Day(), 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
 				_ = journalBucket.Delete([]byte(dateKey))
 			}
 		}
