@@ -151,6 +151,35 @@ func (a *App) GetDocumentList() ([]DocumentSummaryDto, error) {
 	return summaries, nil
 }
 
+func (a *App) GetRecentDocuments(limit int) ([]DocumentSummaryDto, error) {
+	recentIDs, err := a.db.GetRecents()
+	if err != nil {
+		return nil, err
+	}
+
+	// Limit the number of recent documents
+	if limit > 0 && len(recentIDs) > limit {
+		recentIDs = recentIDs[:limit]
+	}
+
+	summaries := make([]DocumentSummaryDto, 0, len(recentIDs))
+	for _, id := range recentIDs {
+		domainDoc, err := a.db.LoadDocument(id)
+		if err != nil {
+			// Skip documents that can't be loaded (might have been deleted)
+			continue
+		}
+
+		summaries = append(summaries, DocumentSummaryDto{
+			Id:    domainDoc.ID.String(),
+			Title: domainDoc.Title,
+			Date:  domainDoc.Date.Format(time.RFC3339),
+		})
+	}
+
+	return summaries, nil
+}
+
 func (a *App) OpenDocument(docId string) (DocumentDto, error) {
 	id, err := uuid.Parse(docId)
 	if err != nil {

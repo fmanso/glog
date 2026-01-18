@@ -14,6 +14,10 @@ export function GetIndexHealth() {
   return window['go']['main']['App']['GetIndexHealth']();
 }
 
+export function GetRecentDocuments(arg1) {
+  return window['go']['main']['App']['GetRecentDocuments'](arg1);
+}
+
 export function GetReferences(arg1) {
   return window['go']['main']['App']['GetReferences'](arg1);
 }

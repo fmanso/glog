@@ -8,6 +8,8 @@ export function GetDocumentList():Promise<Array<main.DocumentSummaryDto>>;
 
 export function GetIndexHealth():Promise<main.IndexHealthDto>;
 
+export function GetRecentDocuments(arg1:number):Promise<Array<main.DocumentSummaryDto>>;
+
 export function GetReferences(arg1:string):Promise<Array<main.DocumentReferenceDto>>;
 
 export function GetScheduledTasks():Promise<Array<main.ScheduledTaskDto>>;

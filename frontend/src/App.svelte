@@ -1,18 +1,37 @@
 <script lang="ts">
     import Router from 'svelte-spa-router';
     import { onMount } from 'svelte';
+    import { location, push } from 'svelte-spa-router';
     import Document from './Document.svelte';
     import OpenDocument from './OpenDocument.svelte';
     import NewDocument from "./NewDocument.svelte";
     import Home from "./Home.svelte";
     import { Quit } from "../wailsjs/runtime/runtime";
 
+    let showOpenModal = false;
+
     onMount(async () => {
     });
 
+    // Check if we should show the open modal based on the route
+    $: {
+        if ($location === '/open') {
+            showOpenModal = true;
+        }
+    }
+
+    function handleOpenModalClose() {
+        showOpenModal = false;
+    }
+
+    function openDocumentModal(e: Event) {
+        e.preventDefault();
+        showOpenModal = true;
+    }
+
     const routes = {
         '/': Home,
-        '/open': OpenDocument,
+        '/open': Home, // Render Home in background when modal is open
         '/doc/:id': Document,
         '/doc-title/:title': Document,
         '/new': NewDocument,
@@ -27,7 +46,7 @@
                 <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-5h-4v5H5a1 1 0 0 1-1-1z"/>
             </svg>
         </a>
-        <a class="icon-link" href="#/open" title="Open" data-tooltip="Open">
+        <a class="icon-link" href="#/open" on:click={openDocumentModal} title="Open" data-tooltip="Open">
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M4 7h5l2 2h9v9a1 1 0 0 1-1 1H4z"/>
                 <path d="M4 7V5a1 1 0 0 1 1-1h5l2 2h5"/>
@@ -51,3 +70,6 @@
         <Router {routes} />
     </section>
 </main>
+
+<!-- Open Document Modal -->
+<OpenDocument isOpen={showOpenModal} on:close={handleOpenModalClose} />
