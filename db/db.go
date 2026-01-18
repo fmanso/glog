@@ -60,6 +60,7 @@ type DocumentStore struct {
 	searchMu           sync.RWMutex // protects search index operations
 	referencesIndex    *referencesIndex
 	scheduledIndex     *scheduledTasks
+	recentsDocs        *recentsDocs
 
 	// Index health tracking
 	failedIndexes   map[string]*failedIndexEntry
@@ -128,6 +129,13 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 		return nil, err
 	}
 
+	recentsDocs, err := newRecentsDocs(db)
+	if err != nil {
+		_ = db.Close()
+		_ = search.Close()
+		return nil, err
+	}
+
 	store := &DocumentStore{
 		bolt:               db,
 		path:               path,
@@ -138,6 +146,7 @@ func NewDocumentStore(path string) (*DocumentStore, error) {
 		search:             search,
 		referencesIndex:    referencesIndex,
 		scheduledIndex:     scheduledIndex,
+		recentsDocs:        recentsDocs,
 		failedIndexes:      make(map[string]*failedIndexEntry),
 		indexHealth: IndexHealth{
 			IsHealthy:       true,
@@ -238,6 +247,20 @@ func (store *DocumentStore) indexDocWithRetry(doc *DocDb, maxAttempts int) error
 	store.checkIndexHealth()
 
 	return errors.New("failed to index document after multiple attempts")
+}
+
+func (store *DocumentStore) GetRecents() ([]domain.DocumentID, error) {
+	ids, err := store.recentsDocs.Get()
+	if err != nil {
+		return nil, err
+	}
+
+	docIDs := make([]domain.DocumentID, len(ids))
+	for i := 0; i < len(ids); i++ {
+		docIDs[i] = domain.DocumentID(ids[i])
+	}
+
+	return docIDs, nil
 }
 
 // RetryFailedIndexing attempts to reindex all documents that previously failed
@@ -451,6 +474,13 @@ func (store *DocumentStore) LoadDocument(id domain.DocumentID) (*domain.Document
 		return nil, err
 	}
 
+	err = store.bolt.Update(func(tx *bolt.Tx) error {
+		return store.recentsDocs.update(tx, uuid.UUID(id))
+	})
+
+	if err != nil {
+		return nil, err
+	}
 	return doc, nil
 }
 
@@ -555,7 +585,13 @@ func (store *DocumentStore) LoadDocumentByTitle(title string) (*domain.Document,
 		docId = domain.DocumentID(id)
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
 
+	err = store.bolt.Update(func(tx *bolt.Tx) error {
+		return store.recentsDocs.update(tx, uuid.UUID(docId))
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -754,6 +790,11 @@ func (store *DocumentStore) Delete(id uuid.UUID) error {
 
 		// Delete from scheduled_index
 		if err := store.scheduledIndex.delete(tx, docDb); err != nil {
+			return err
+		}
+
+		// Delete from recents
+		if err := store.recentsDocs.delete(tx, docDb.ID); err != nil {
 			return err
 		}
 
